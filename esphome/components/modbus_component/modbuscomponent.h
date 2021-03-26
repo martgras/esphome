@@ -9,6 +9,8 @@
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/automation.h"
 
+#include <string>
+#include <sstream>
 #include <queue>
 #include <map>
 #include <memory>
@@ -59,9 +61,8 @@ struct RegisterRange {
 // to enable binary sensors for values encoded as bits in the same register the key of each sensor
 // is start address +  off << 32 | bitpos
 
-inline uint64_t calc_key(uint16_t start_address,ModbusFunctionCode function_code= ModbusFunctionCode::READ_INPUT_REGISTERS, uint8_t offset = 0, uint32_t bitmask = 0) {
-  
-  return uint64_t((start_address << 16) + ((uint8_t)function_code << 8) +  offset ) << 32 | bitmask;
+inline uint64_t calc_key(ModbusFunctionCode function_code, uint16_t start_address, uint8_t offset = 0, uint32_t bitmask = 0) {
+  return uint64_t((uint32_t(start_address) << 16) + (uint16_t(function_code) << 8) + ( offset & 0xFF )) << 32 | bitmask;
 }
 inline uint16_t register_from_key(uint64_t key) { return key >> 48; }
 
@@ -90,6 +91,7 @@ inline uint64_t qword_from_hex_str(const std::string &value, uint8_t pos) {
   return static_cast<uint64_t>( dword_from_hex_str(value,pos)) << 32 | dword_from_hex_str(value,pos+4);
 }
 
+std::string get_hex_string(const std::vector<uint8_t> &data) ;
 
 const std::function<float(int64_t)> DIVIDE_BY_100 = [](int64_t val) { return val / 100.0; };
 
@@ -123,7 +125,7 @@ struct SensorItem {
 
   CallbackManager<void(RawData)> raw_data_callback_;
 
-  uint64_t getkey() const { return calc_key(start_address,register_type, offset, bitmask); }
+  uint64_t getkey() const { return calc_key(register_type,start_address, offset, bitmask); }
   size_t get_register_size() {
     size_t size = 0;
     switch (sensor_value_type) {
@@ -323,7 +325,7 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
   void on_register_data(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data);
   void set_command_throttle(uint16_t command_throttle) { this->command_throttle_ = command_throttle; }
 
-  void queue_command_(const ModbusCommandItem &command) {
+  void queue_command(const ModbusCommandItem &command) {
     command_queue_.push(make_unique<ModbusCommandItem>(command));
   }
 
