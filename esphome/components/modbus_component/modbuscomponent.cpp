@@ -1,4 +1,5 @@
 #include "modbuscomponent.h"
+#include <stdint.h>
 #include "esphome/core/log.h"
 #include <sstream>
 #include <iomanip>
@@ -7,6 +8,22 @@ namespace esphome {
 namespace modbus_component {
 
 static const char *TAG = "ModbusComponent";
+
+
+std::string get_hex_string(const std::vector<uint8_t> &data) {
+  std::ostringstream output;
+  char buffer[3];
+  for (uint8_t b : data) {
+//    sprintf(buffer, "%02x", b);
+    uint8_t val = (b & 0xF0) >> 4 ;
+    buffer[0] = val > 9 ? 'a'+ val : '0' + val ;
+    val = (b & 0xF );
+    buffer[1] = val > 9 ? 'a'+ val : '0' + val;
+    buffer[2] = '\0';
+    output << buffer;
+  }
+  return output.str();
+}
 
 void ModbusComponent::setup() { this->create_register_ranges(); }
 
@@ -99,12 +116,14 @@ void ModbusComponent::on_register_data(ModbusFunctionCode function_code, uint16_
   }
   // loop through all sensors with the same start address
   while (map_it != sensormap.end() && map_it->second->start_address == start_address) {
-    RawData r ; 
-    r.raw=data;
-    r.modbus_ = this ; 
-    map_it->second->raw_data_callback_.call(r);
-    float val = map_it->second->parse_and_publish(data);
-    ESP_LOGD(TAG, " Sensor : %s = %.02f ", map_it->second->get_name().c_str(), val);
+    if (map_it->second->register_type == function_code) {
+      RawData r ; 
+      r.raw=data;
+      r.modbus_ = this ; 
+      map_it->second->raw_data_callback_.call(r);
+      float val = map_it->second->parse_and_publish(data);
+      ESP_LOGD(TAG, " Sensor : %s = %.02f ", map_it->second->get_name().c_str(), val);
+    }
     map_it++;
   }
 }
@@ -127,7 +146,7 @@ void ModbusComponent::update() {
     if (r.skip_updates_counter == 0) {
       ModbusCommandItem command_item =
           ModbusCommandItem::create_read_command(this, r.register_type, r.start_address, r.register_count);
-      queue_command_(command_item);
+      queue_command(command_item);
       r.skip_updates_counter = r.skip_updates;  // reset counter to config value
     } else {
       r.skip_updates_counter--;
