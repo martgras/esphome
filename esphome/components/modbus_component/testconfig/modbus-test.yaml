@@ -57,6 +57,99 @@ sensor:
     ## Any modbus registers not already implemented can be defined here
     ##
     sensors:
+      - id: array_rated_voltage
+        name: "array_rated_voltage"
+        address: 0x3000
+        offset: 0
+        unit_of_measurement: "V" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        skip_updates: 60
+        filters:
+        - multiply: 0.01
+
+      - id: array_rated_current
+        name: "array_rated_current"
+        address: 0x3000
+        offset: 2
+        unit_of_measurement: "V" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        filters:
+        - multiply: 0.01
+
+      - id: array_rated_power
+        name: "array_rated_power"
+        address: 0x3000
+        register_count: 2
+        offset: 4
+        unit_of_measurement: "W" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        filters:
+        - multiply: 0.01
+
+
+      - id: battery_rated_voltage
+        name: "battery_rated_voltage"
+        address: 0x3000
+        offset: 8
+        unit_of_measurement: "V" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        filters:
+        - multiply: 0.01
+
+
+      - id: battery_rated_current
+        name: "battery_rated_current"
+        address: 0x3000
+        offset: 10
+        unit_of_measurement: "A" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        filters:
+        - multiply: 0.01
+
+      - id: battery_rated_power
+        name: "battery_rated_power"
+        address: 0x3000
+        register_count: 2
+        offset: 12
+        unit_of_measurement: "W" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        filters:
+        - multiply: 0.01
+
+      - id: charging_mode
+        name: "charging_mode"
+        address: 0x3000
+        offset: 16
+        unit_of_measurement: "" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 0
+
+
+      - id: rated_current_of_load
+        name: "rated_current_of_load"
+        address: 0x300E
+        offset: 0
+        unit_of_measurement: "A" 
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        scale_factor: 0.01
+        filters:
+        - multiply: 0.01
+
       - id: pv_input_voltage
         name: "PV array input voltage"
         address: 0x3100
@@ -146,7 +239,7 @@ sensor:
         unit_of_measurement: "A" ## for any other unit the value is returned in minutes
         modbus_functioncode: "read_input_registers"
         value_type: U_WORD
-        accuracy_decimals: 1
+        accuracy_decimals: 2
         filters:
         - multiply: 0.01
 
@@ -204,6 +297,178 @@ sensor:
         filters:
         - multiply: 0.01
 
+      - id: max_pv_voltage_today
+        name: "Maximum PV voltage today"
+        address: 0x3300
+        offset: 0
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        unit_of_measurement: "V"
+        filters:
+        - multiply: 0.01
+
+      - id: min_pv_voltage_today
+        name: "Minimum PV voltage today"
+        address: 0x3300
+        offset: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        unit_of_measurement: "V"
+        filters:
+        - multiply: 0.01
+
+      - id: max_battery_voltage_today
+        name: "Maximum battery voltage today"
+        address: 0x3300
+        offset: 4
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        unit_of_measurement: "V"
+        filters:
+        - multiply: 0.01
+
+      - id: min_battery_today
+        name: "Minimum battery voltage today"
+        address: 0x3300
+        offset: 6
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        unit_of_measurement: "V"
+        filters:
+        - multiply: 0.01
+
+      - id: consumed_energy_today
+        name: "Consumed energy today"
+        address: 0x3300
+        offset: 8
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        unit_of_measurement: "kWh"
+        filters:
+        - multiply: 0.01
+
+      - id: consumed_energy_month
+        name: "Consumed Energy Month"
+        address: 0x3300
+        offset: 12
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        unit_of_measurement: "kWh"
+        filters:
+        - multiply: 0.01
+       
+      - id: consumed_energy_year
+        name: "Consumed energy year"
+        address: 0x3300
+        offset: 16
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        unit_of_measurement: "kWh"
+        filters:
+        - multiply: 0.01
+
+      - id: consumed_energy_total
+        name: "Consumed energy total"
+        address: 0x3300
+        offset: 20
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        unit_of_measurement: "kWh"
+        filters:
+        - multiply: 0.01
+
+      - id: generated_energy_today
+        name: "Generated energy today"
+        address: 0x3300
+        offset: 24
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        unit_of_measurement: "kWh"
+        filters:
+        - multiply: 0.01
+
+      - id: generated_energy_month
+        name: "Generated energy month"
+        address: 0x3300
+        offset: 28
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        unit_of_measurement: "kWh"
+        filters:
+        - multiply: 0.01
+
+      - id: generated_energy_year
+        name: "Generated energy year"
+        address: 0x3300
+        offset: 32
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        unit_of_measurement: "kWh"
+        filters:
+        - multiply: 0.01
+
+      - id: generated_energy_total
+        name: "Generated energy total"
+        address: 0x3300
+        offset: 36
+        register_count: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_DWORD_R
+        accuracy_decimals: 1
+        filters:
+        - multiply: 0.01
+
+      - id: co2_reduction
+        name: "CO2 reduction"
+        address: 0x3300
+        offset: 40
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        unit_of_measurement: "kg"
+        filters:
+        - multiply: 0.01
+        
+      - id: battery_voltage
+        name: "Battery voltage"
+        address: 0x331A
+        offset: 0
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        unit_of_measurement: "V"
+        filters:
+        - multiply: 0.01
+
+      - id: battery_current
+        name: "Battery current"
+        address: 0x331A
+        offset: 2
+        modbus_functioncode: "read_input_registers"
+        value_type: U_WORD
+        accuracy_decimals: 1
+        unit_of_measurement: "A"
+        filters:
+        - multiply: 0.01
+
       - id: length_of_night_minutes
         address: 0x9065
         internal: true
@@ -252,30 +517,22 @@ sensor:
             - lambda: |-
                 ESP_LOGV("main", "decoding rtc hex encoded raw data: %s", x.c_str());
                 uint8_t h=0,m=0,s=0,d=0,month_=0,y = 0 ;
-                m = esphome::modbus_component::hex_byte_from_str(x,0);
-                s = esphome::modbus_component::hex_byte_from_str(x,1);
-                d = esphome::modbus_component::hex_byte_from_str(x,2);
-                h = esphome::modbus_component::hex_byte_from_str(x,3);
-                y = esphome::modbus_component::hex_byte_from_str(x,4);
-                month_ = esphome::modbus_component::hex_byte_from_str(x,5);
+                m = esphome::modbus_component::byte_from_hex_str(x,0);
+                s = esphome::modbus_component::byte_from_hex_str(x,1);
+                d = esphome::modbus_component::byte_from_hex_str(x,2);
+                h = esphome::modbus_component::byte_from_hex_str(x,3);
+                y = esphome::modbus_component::byte_from_hex_str(x,4);
+                month_ = esphome::modbus_component::byte_from_hex_str(x,5);
                 char buffer[20];
                 // format time as YYYY:mm:dd hh:mm:ss
                 sprintf(buffer,"%04d:%02d:%02d %02d:%02d:%02d",y+2000,month_,d,h,m,s);
                 id(template_rtc).publish_state(buffer);
 
-
-#    switches:
-#      - id: default_load_mode
-#        modbus_functioncode: read_holding_registers
-#        address: 0x906A
-#        offset: 0
-#        name: "Default Load On/Off"
-#        bitmask: 1#
-
-    update_interval: 10s
+    update_interval: 30s
 
 text_sensor:
    - platform: template
      name: "RTC Time Sensor"
      id: template_rtc
+
 

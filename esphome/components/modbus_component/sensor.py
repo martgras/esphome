@@ -1,5 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome import automation
 from esphome.components import (
     sensor,
     modbus,
@@ -14,6 +15,7 @@ from esphome.const import (
     CONF_ID,
     CONF_ADDRESS,
     CONF_OFFSET,
+    CONF_TRIGGER_ID,
     CONF_NAME,
     UNIT_AMPERE,
     UNIT_CELSIUS,
@@ -50,9 +52,19 @@ AUTO_LOAD = [
     "modbus_component",
 ]
 
+CONF_ON_RAW = "on_raw"
+
+# pylint: disable=invalid-name
+text_sensor_ns = cg.esphome_ns.namespace("text_sensor")
+TextSensor = text_sensor_ns.class_("TextSensor", cg.Nameable)
+
 modbus_component_ns = cg.esphome_ns.namespace("modbus_component")
 ModbusComponent = modbus_component_ns.class_(
     "ModbusComponent", cg.PollingComponent, modbus.ModbusDevice
+)
+RawData = modbus_component_ns.struct("RawData")
+RawDataCodeTrigger = modbus_component_ns.class_(
+    "RawDataCodeTrigger", automation.Trigger.template(RawData)
 )
 
 ModbusFunctionCode_ns = cg.esphome_ns.namespace("modbus_component::ModbusFunctionCode")
@@ -82,13 +94,6 @@ SENSOR_VALUE_TYPE = {
     "S_QWORD": SensorValueType.S_QWORD,
     "U_QWORD_R": SensorValueType.S_QWORD_R,
 }
-
-# Filters
-# Filter = binary_sensor_ns.class_(" RAW_Filter")
-# LambdaFilter = binary_sensor_ns.class_("LambdaFilter", Filter)
-# not yet used: Filter operating at the raw modbus data
-RAW_FILTER_REGISTRY = Registry()
-validate_filters = cv.validate_registry("raw_filter", RAW_FILTER_REGISTRY)
 
 MODBUS_REGISTRY = Registry()
 validate_modbus_range = cv.validate_registry("sensors", MODBUS_REGISTRY)
@@ -127,13 +132,14 @@ modbus_switch_entry = switch.SWITCH_SCHEMA.extend(
 ).extend(cv.COMPONENT_SCHEMA)
 
 
-# pylint: disable=invalid-name
-text_sensor_ns = cg.esphome_ns.namespace("text_sensor")
-TextSensor = text_sensor_ns.class_("TextSensor", cg.Nameable)
-
 text_sensor_entry = text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(TextSensor),
+        cv.Optional(CONF_ON_RAW): automation.validate_automation(
+            {
+                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(RawDataCodeTrigger),
+            }
+        ),
         cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
         cv.Optional(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET): cv.int_,
@@ -350,6 +356,11 @@ def to_code(config):
                     cfg[CONF_SKIP_UPDATES],
                 )
             )
+            if config.get(CONF_ON_RAW):
+                cfg_raw = cfg[CONF_ON_RAW]
+                for c in cfg_raw:
+                    trigger = cg.new_Pvariable(c[CONF_TRIGGER_ID], var, sens)
+                    yield automation.build_automation(trigger, [(RawData, "x")], c)
     if config.get("switches"):
         conf = config["switches"]
         for cfg in conf:

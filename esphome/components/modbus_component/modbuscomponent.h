@@ -1,15 +1,18 @@
 #pragma once
 
+#include <stdint.h>
 #include "esphome/core/component.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/modbus/modbus.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/core/automation.h"
 
 #include <queue>
 #include <map>
 #include <memory>
+#include <vector>
 
 namespace esphome {
 namespace modbus_component {
@@ -56,22 +59,47 @@ struct RegisterRange {
 // to enable binary sensors for values encoded as bits in the same register the key of each sensor
 // is start address +  off << 32 | bitpos
 
-inline uint64_t calc_key(uint16_t start_address, uint8_t offset = 0, uint32_t bitmask = 0) {
-  return uint64_t((start_address << 16) + offset) << 32 | bitmask;
+inline uint64_t calc_key(uint16_t start_address,ModbusFunctionCode function_code= ModbusFunctionCode::READ_INPUT_REGISTERS, uint8_t offset = 0, uint32_t bitmask = 0) {
+  
+  return uint64_t((start_address << 16) + ((uint8_t)function_code << 8) +  offset ) << 32 | bitmask;
 }
 inline uint16_t register_from_key(uint64_t key) { return key >> 48; }
 
 // Get a byte from a hex string 
 //  hex_byte_from_str("1122",1) returns uint_8 value 0x22 == 34 
 //  hex_byte_from_str("1122",0) returns 0x11
-inline uint8_t hex_byte_from_str(const std::string &value, uint8_t pos) {
+//  position is the offset in bytes. 
+//  Because each byte is encoded in 2 hex digits 
+//  the position of the original byte in the hex string is byte_pos * 2
+inline uint8_t byte_from_hex_str(const std::string &value, uint8_t pos) {
   auto c = value.c_str()[pos*2];
   uint8_t hi = (c >= 'A') ? (c >= 'a') ? (c - 'a' + 10) : (c - 'A' + 10) : (c - '0');
-  c =value.c_str()[pos*2+1];
+  c = value.c_str()[pos*2+1];
   return ((c >= 'A') ? (c >= 'a') ? (c - 'a' + 10) : (c - 'A' + 10) : (c - '0')) | hi << 4;
 }
 
+inline uint16_t word_from_hex_str(const std::string &value, uint8_t pos) {
+  return byte_from_hex_str(value,pos) << 8 | byte_from_hex_str(value,pos+1);
+}
+
+inline uint32_t dword_from_hex_str(const std::string &value, uint8_t pos) {
+  return word_from_hex_str(value,pos) << 16 | word_from_hex_str(value,pos+2);
+}
+
+inline uint64_t qword_from_hex_str(const std::string &value, uint8_t pos) {
+  return static_cast<uint64_t>( dword_from_hex_str(value,pos)) << 32 | dword_from_hex_str(value,pos+4);
+}
+
+
 const std::function<float(int64_t)> DIVIDE_BY_100 = [](int64_t val) { return val / 100.0; };
+
+class ModbusComponent ;
+
+struct RawData {
+  std::vector<uint8_t> raw;
+  ModbusComponent *modbus_ ;
+};
+
 
 struct SensorItem {
   ModbusFunctionCode register_type;
@@ -81,13 +109,21 @@ struct SensorItem {
   uint8_t register_count;
   uint8_t skip_updates;
   SensorValueType sensor_value_type;
+  virtual Nameable *get_sensor()=0;
   int64_t last_value;
   std::function<float(int64_t)> transform_expression;
 
   virtual std::string const &get_name() = 0;
   virtual void log() = 0;  // {}
   virtual float parse_and_publish(const std::vector<uint8_t> &data) = 0;
-  uint64_t getkey() const { return calc_key(start_address, offset, bitmask); }
+
+  void add_on_raw_data_received_callback(std::function<void(RawData)> callback) {
+    this->raw_data_callback_.add(std::move(callback));
+  }
+
+  CallbackManager<void(RawData)> raw_data_callback_;
+
+  uint64_t getkey() const { return calc_key(start_address,register_type, offset, bitmask); }
   size_t get_register_size() {
     size_t size = 0;
     switch (sensor_value_type) {
@@ -131,8 +167,10 @@ struct SensorItem {
   }
 };
 
+
 struct FloatSensorItem : public SensorItem {
   sensor::Sensor *sensor_;
+  Nameable *get_sensor()  override { return sensor_; }
   FloatSensorItem(sensor::Sensor *sensor) : sensor_(sensor) {}
   std::string const &get_name() override { return sensor_->get_name(); }
   void log() override;
@@ -141,6 +179,7 @@ struct FloatSensorItem : public SensorItem {
 
 struct BinarySensorItem : public SensorItem {
   binary_sensor::BinarySensor *sensor_;
+  Nameable *get_sensor() override { return sensor_; }
   BinarySensorItem(binary_sensor::BinarySensor *sensor) : sensor_(sensor) {}
   std::string const &get_name() override { return sensor_->get_name(); }
   void log() override;
@@ -149,6 +188,7 @@ struct BinarySensorItem : public SensorItem {
 
 struct TextSensorItem : public SensorItem {
   text_sensor::TextSensor *sensor_;
+  Nameable *get_sensor()  override  { return sensor_; }
   TextSensorItem(text_sensor::TextSensor *sensor) : sensor_(sensor) {}
   std::string const &get_name() override { return sensor_->get_name(); }
   void log() override;
@@ -257,12 +297,12 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
   }
 
   // find a register by it's address regardless of the offset
-  SensorItem *find_by_register_address(uint16_t register_address) {
+  SensorItem *find_by_register_address(ModbusFunctionCode function_code, uint16_t register_address) {
     // Not extemly effienct but the number of registers isn't that large
     // and the operation is used only in special cases
     // like changing a property during setup
     for (auto &item : this->sensormap) {
-      if (register_address == item.second->start_address + item.second->offset) {
+      if (register_address == item.second->start_address + item.second->offset && function_code == item.second->register_type) {
         return item.second.get();
       }
     }
@@ -279,23 +319,41 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
   // set the RTC Clock of the controller to current time. Note: make sure to add sntp config
   void set_realtime_clock_to_now();
 
-  void on_write_register_response(uint16_t start_address, const std::vector<uint8_t> &data);
-  void on_register_data(uint16_t start_address, const std::vector<uint8_t> &data);
+  void on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data);
+  void on_register_data(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data);
   void set_command_throttle(uint16_t command_throttle) { this->command_throttle_ = command_throttle; }
-
- protected:
-
-  // Hold the pending requests to sent
-  std::queue<std::unique_ptr<ModbusCommandItem>> command_queue_;
 
   void queue_command_(const ModbusCommandItem &command) {
     command_queue_.push(make_unique<ModbusCommandItem>(command));
   }
 
+ protected:
+
+  // Hold the pending requests to sent
+  std::queue<std::unique_ptr<ModbusCommandItem>> command_queue_;
   bool send_next_command_();
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
   static bool sending_;
+};
+
+class RawDataCodeTrigger : public Trigger<RawData> {
+ public:
+  explicit RawDataCodeTrigger(ModbusComponent *parent, text_sensor::TextSensor *sensor) {
+    
+    auto id = sensor->get_object_id_hash();
+     for (auto &item : parent->sensormap) {
+      //if (id == item.second->get_sensor()->get_object_id_hash()) 
+      {
+       // return item.second.get();
+        item.second->add_on_raw_data_received_callback([this](RawData data) {
+          ESP_LOGI("MOD","ON RAW");
+          this->trigger(data); 
+        });
+        break;
+    }
+  }
+  }
 };
 
 struct ModbusCommandItem {
@@ -307,14 +365,14 @@ struct ModbusCommandItem {
   uint16_t register_count;
   uint16_t expected_response_size;
   ModbusFunctionCode function_code;
-  std::function<void(uint16_t start_address, const std::vector<uint8_t> &data)> on_data_func;
+  std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)> on_data_func;
   std::vector<uint16_t> payload = {};
   bool send();
 
   // factory methods
   static ModbusCommandItem create_read_command(
       ModbusComponent *modbusdevice, ModbusFunctionCode function_code, uint16_t start_address, uint16_t register_count,
-      std::function<void(uint16_t start_address, const std::vector<uint8_t> &data)> &&handler) {
+      std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)> &&handler) {
     ModbusCommandItem cmd;
     cmd.modbusdevice = modbusdevice;
     cmd.function_code = function_code;
@@ -340,8 +398,8 @@ struct ModbusCommandItem {
     cmd.register_address = start_address;
     cmd.expected_response_size = register_count * 2;
     cmd.register_count = register_count;
-    cmd.on_data_func = [modbusdevice](uint16_t start_address, const std::vector<uint8_t> data) {
-      modbusdevice->on_register_data(start_address, data);
+    cmd.on_data_func = [modbusdevice](ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> data) {
+      modbusdevice->on_register_data(function_code, start_address, data);
     };
     // adjust expected response size for ReadCoils and DiscretInput
     if (cmd.function_code == ModbusFunctionCode::READ_COILS) {
