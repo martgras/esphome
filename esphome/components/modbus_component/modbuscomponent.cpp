@@ -49,11 +49,11 @@ void ModbusComponent::on_modbus_data(const std::vector<uint8_t> &data) {
                data.size());
     } else {
       ESP_LOGVV(TAG, "Dispatch to handler");
-      current_command->on_data_func(current_command->register_address, data);
+      current_command->on_data_func(current_command->function_code,current_command->register_address, data);
     }
 #else
     ESP_LOGVV(TAG, "Dispatch to handler");
-    current_command->on_data_func(current_command->register_address, data);
+    current_command->on_data_func(current_command->function_code ,current_command->register_address, data);
 #endif
     this->sending_ = false;
     command_queue_.pop();
@@ -82,17 +82,16 @@ void ModbusComponent::on_modbus_error(uint8_t function_code, uint8_t exception_c
   //}
 }
 
-void ModbusComponent::on_register_data(uint16_t start_address, const std::vector<uint8_t> &data) {
+void ModbusComponent::on_register_data(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data) {
   ESP_LOGD(TAG, " data for register address : 0x%X : ", start_address);
 
   auto vec_it = find_if(begin(register_ranges), end(register_ranges),
-                        [=](RegisterRange const &r) { return (r.start_address == start_address); });
+                        [=](RegisterRange const &r) { return (r.start_address == start_address && r.register_type == function_code) ; });
 
   if (vec_it == register_ranges.end()) {
     ESP_LOGE(TAG, "Handle incoming data : No matching range for sensor found - start_address :  0x%X", start_address);
     return;
   }
-
   auto map_it = sensormap.find(vec_it->first_sensorkey);
   if (map_it == sensormap.end()) {
     ESP_LOGE(TAG, "Handle incoming data : No sensor found in at start_address :  0x%X", start_address);
@@ -100,6 +99,10 @@ void ModbusComponent::on_register_data(uint16_t start_address, const std::vector
   }
   // loop through all sensors with the same start address
   while (map_it != sensormap.end() && map_it->second->start_address == start_address) {
+    RawData r ; 
+    r.raw=data;
+    r.modbus_ = this ; 
+    map_it->second->raw_data_callback_.call(r);
     float val = map_it->second->parse_and_publish(data);
     ESP_LOGD(TAG, " Sensor : %s = %.02f ", map_it->second->get_name().c_str(), val);
     map_it++;
@@ -131,7 +134,7 @@ void ModbusComponent::update() {
     }
   }
   // send_next_command_();
-  ESP_LOGI(TAG, "Modbus  update complete Free Heap  %u bytes", ESP.getFreeHeap());
+  ESP_LOGD(TAG, "Modbus  update complete Free Heap  %u bytes", ESP.getFreeHeap());
 }
 
 // walk through the sensors and determine the registerranges to read
@@ -336,7 +339,7 @@ template<typename T> T get_data(const std::vector<uint8_t> &data, size_t offset)
 }
 #endif
 
-void ModbusComponent::on_write_register_response(uint16_t start_address, const std::vector<uint8_t> &data) {
+void ModbusComponent::on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data) {
   ESP_LOGD(TAG, "Command ACK 0x%X %d ", get_data<uint16_t>(data, 0), get_data<int16_t>(data, 1));
 }
 
@@ -366,18 +369,6 @@ template<typename N> N mask_and_shift_by_rightbit(N data, uint32_t mask) {
   }
   return 0;
 }
-
-union dataresults {
-  byte raw[16];
-  uint8_t u_byte;
-  uint16_t u_word;
-  uint32_t u_dword;
-  uint64_t u_qword;
-  int8_t s_byte;
-  int16_t s_word;
-  int32_t s_dword;
-  int64_t s_qword;
-};
 
 float FloatSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
   int64_t value = 0;  // int64_t because it can hold signed and unsigned 32 bits
@@ -501,8 +492,8 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_command(ModbusCompone
   cmd.register_address = start_address;
   cmd.expected_response_size = 4;       // Response to write commands is always 4 bytes
   cmd.register_count = register_count;  // not used here anyways
-  cmd.on_data_func = [modbusdevice](uint16_t start_address, const std::vector<uint8_t> data) {
-    modbusdevice->on_write_register_response(start_address, data);
+  cmd.on_data_func = [modbusdevice,cmd](ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> data) {
+    modbusdevice->on_write_register_response(cmd.function_code,start_address, data);
   };
   cmd.payload = values;
   return cmd;
@@ -516,8 +507,8 @@ ModbusCommandItem ModbusCommandItem::create_write_single_command(ModbusComponent
   cmd.register_address = start_address;
   cmd.expected_response_size = 4;  // Response to write commands is always 4 bytes
   cmd.register_count = 1;          // not used here anyways
-  cmd.on_data_func = [modbusdevice](uint16_t start_address, const std::vector<uint8_t> data) {
-    modbusdevice->on_write_register_response(start_address, data);
+  cmd.on_data_func = [modbusdevice,cmd](ModbusFunctionCode function_code,uint16_t start_address, const std::vector<uint8_t> data) {
+    modbusdevice->on_write_register_response(cmd.function_code,start_address, data);
   };
   cmd.payload.push_back(value);
   return cmd;
