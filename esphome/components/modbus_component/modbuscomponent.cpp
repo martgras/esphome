@@ -43,7 +43,7 @@ bool ModbusComponent::send_next_command_() {
     command->send();
     this->last_command_timestamp_ = millis();
     if (!command->on_data_func) {  // No handler remove from queue directly after sending
-      command_queue_.pop();
+      command_queue_.pop_front();
       this->sending_ = false;
     }
   } else {
@@ -58,22 +58,11 @@ void ModbusComponent::on_modbus_data(const std::vector<uint8_t> &data) {
 
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
-#ifdef CHECK_RESPONSE_SIZE
-    // Because modbus has no header to indicate the response the expected response size is used to check if the correct
-    // callback is place
-    if (data.size() != current_command->expected_response_size) {
-      ESP_LOGE(TAG, "Unexpected modbus response size. Expected=%d actual=%zu", current_command->expected_response_size,
-               data.size());
-    } else {
-      ESP_LOGVV(TAG, "Dispatch to handler");
-      current_command->on_data_func(current_command->function_code,current_command->register_address, data);
-    }
-#else
-    ESP_LOGVV(TAG, "Dispatch to handler");
+
+    ESP_LOGD(TAG, "Dispatch to handler 0x%X",current_command->register_address);
     current_command->on_data_func(current_command->function_code ,current_command->register_address, data);
-#endif
     this->sending_ = false;
-    command_queue_.pop();
+    command_queue_.pop_front();
   }
 
   // if (!command_queue_.empty()) {
@@ -91,7 +80,7 @@ void ModbusComponent::on_modbus_error(uint8_t function_code, uint8_t exception_c
              "payload size=%zu",
              current_command->expected_response_size, function_code, current_command->register_address,
              current_command->register_count, current_command->payload.size());
-    command_queue_.pop();
+    command_queue_.pop_front();
   }
   // pump the next command in the queue
   // if (!command_queue_.empty()) {
@@ -140,20 +129,28 @@ void ModbusComponent::update() {
     ESP_LOGD(TAG, "Skipping update");
     return;
   }
+//#if CORE_DEBUG_LEVEL >=  5
+  if (!command_queue_.empty()) {
+    ESP_LOGW(TAG, "%d modbus commands already in queue",command_queue_.size());
+  } else {
+      ESP_LOGI(TAG, "updating modbus component");
+  }
+//#endif  
   for (auto &r : this->register_ranges) {
-    ESP_LOGV(TAG, " Range : %X Size: %x (%d) skip: %d", r.start_address, r.register_count, (int) r.register_type,
+    ESP_LOGD(TAG, " Range : %X Size: %x (%d) skip: %d", r.start_address, r.register_count, (int) r.register_type,
              r.skip_updates_counter);
     if (r.skip_updates_counter == 0) {
       ModbusCommandItem command_item =
           ModbusCommandItem::create_read_command(this, r.register_type, r.start_address, r.register_count);
       queue_command(command_item);
+      yield();
       r.skip_updates_counter = r.skip_updates;  // reset counter to config value
     } else {
       r.skip_updates_counter--;
     }
   }
   // send_next_command_();
-  ESP_LOGD(TAG, "Modbus  update complete Free Heap  %u bytes", ESP.getFreeHeap());
+  ESP_LOGI(TAG, "Modbus  update complete Free Heap  %u bytes", ESP.getFreeHeap());
 }
 
 // walk through the sensors and determine the registerranges to read
@@ -458,6 +455,8 @@ float FloatSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
   if (value != this->last_value) {
     this->sensor_->publish_state(result);
     this->last_value = value;
+  } else {
+    ESP_LOGV(TAG, "SENSOR value didn't change - don't publish");
   }
   return result;
 }
@@ -502,6 +501,50 @@ float TextSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
   this->sensor_->publish_state(output.str());
   return result;
 }
+
+
+// factory methods
+ModbusCommandItem ModbusCommandItem::create_read_command(
+      ModbusComponent *modbusdevice, ModbusFunctionCode function_code, uint16_t start_address, uint16_t register_count,
+      std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)> &&handler) {
+    ModbusCommandItem cmd;
+    cmd.modbusdevice = modbusdevice;
+    cmd.function_code = function_code;
+    cmd.register_address = start_address;
+    cmd.expected_response_size = register_count * 2;
+    cmd.register_count = register_count;
+    cmd.on_data_func = std::move(handler);
+    // adjust expected response size for ReadCoils and DiscretInput
+    if (cmd.function_code == ModbusFunctionCode::READ_COILS) {
+      cmd.expected_response_size = (register_count + 7) / 8;
+    }
+    if (cmd.function_code == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
+      cmd.expected_response_size = 1;
+    }
+    return cmd;
+  }
+
+ModbusCommandItem ModbusCommandItem::create_read_command(ModbusComponent *modbusdevice, ModbusFunctionCode function_code,
+                                               uint16_t start_address, uint16_t register_count) {
+    ModbusCommandItem cmd;
+    cmd.modbusdevice = modbusdevice;
+    cmd.function_code = function_code;
+    cmd.register_address = start_address;
+    cmd.expected_response_size = register_count * 2;
+    cmd.register_count = register_count;
+    cmd.on_data_func = [modbusdevice](ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> data) {
+      modbusdevice->on_register_data(function_code, start_address, data);
+    };
+    // adjust expected response size for ReadCoils and DiscretInput
+    if (cmd.function_code == ModbusFunctionCode::READ_COILS) {
+      cmd.expected_response_size = (register_count + 7) / 8;
+    }
+    if (cmd.function_code == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
+      cmd.expected_response_size = 1;
+    }
+    return cmd;
+  }
+
 ModbusCommandItem ModbusCommandItem::create_write_multiple_command(ModbusComponent *modbusdevice,
                                                                    uint16_t start_address, uint16_t register_count,
                                                                    const std::vector<uint16_t> &values) {

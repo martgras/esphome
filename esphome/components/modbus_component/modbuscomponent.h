@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <vector>
+#include <list>
 
 namespace esphome {
 namespace modbus_component {
@@ -208,6 +209,32 @@ struct ModbusSwitchItem : public SensorItem {
   uint16_t response_bytes_;
 };
 
+struct ModbusCommandItem {
+  // keep memory consumption low.  Since all registers are 2 bytes and only write RTC needs to be written in 1 command 8
+  // bytes is enough
+  static const size_t MAX_PAYLOAD_BYTES = 240;
+  ModbusComponent *modbusdevice;
+  uint16_t register_address;
+  uint16_t register_count;
+  uint16_t expected_response_size;
+  ModbusFunctionCode function_code;
+  std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)> on_data_func;
+  std::vector<uint16_t> payload = {};
+  bool send();
+
+  // factory methods
+  static ModbusCommandItem create_read_command(
+      ModbusComponent *modbusdevice, ModbusFunctionCode function_code, uint16_t start_address, uint16_t register_count,
+      std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)> &&handler);
+
+  static ModbusCommandItem create_read_command(ModbusComponent *modbusdevice, ModbusFunctionCode function_code,
+                                               uint16_t start_address, uint16_t register_count);
+  static ModbusCommandItem create_write_multiple_command(ModbusComponent *modbusdevice, uint16_t start_address,
+                                                         uint16_t register_count, const std::vector<uint16_t> &values);
+  static ModbusCommandItem create_write_single_command(ModbusComponent *modbusdevice, uint16_t start_address,
+                                                       int16_t value);
+};
+
 // class ModbusSensor ;
 class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
  public:
@@ -326,13 +353,28 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
   void set_command_throttle(uint16_t command_throttle) { this->command_throttle_ = command_throttle; }
 
   void queue_command(const ModbusCommandItem &command) {
-    command_queue_.push(make_unique<ModbusCommandItem>(command));
+    // check if this commmand is already qeued.
+    // not very effective but the queue is never really large
+    for ( auto &item : command_queue_) {
+
+        static const size_t MAX_PAYLOAD_BYTES = 240;
+  ModbusComponent *modbusdevice;
+  if ( item->register_address == command.register_address
+    && item->register_count == command.register_count 
+    && item->function_code == command.function_code
+    && item->payload.size() == command.payload.size()) {
+        ESP_LOGW("modbus_component","Duplicate modbus command found");
+        return;
+      }
+    }
+
+    command_queue_.push_back(make_unique<ModbusCommandItem>(command));
   }
 
  protected:
 
   // Hold the pending requests to sent
-  std::queue<std::unique_ptr<ModbusCommandItem>> command_queue_;
+  std::list<std::unique_ptr<ModbusCommandItem>> command_queue_;
   bool send_next_command_();
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
@@ -358,66 +400,8 @@ class RawDataCodeTrigger : public Trigger<RawData> {
   }
 };
 
-struct ModbusCommandItem {
-  // keep memory consumption low.  Since all registers are 2 bytes and only write RTC needs to be written in 1 command 8
-  // bytes is enough
-  static const size_t MAX_PAYLOAD_BYTES = 240;
-  ModbusComponent *modbusdevice;
-  uint16_t register_address;
-  uint16_t register_count;
-  uint16_t expected_response_size;
-  ModbusFunctionCode function_code;
-  std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)> on_data_func;
-  std::vector<uint16_t> payload = {};
-  bool send();
 
-  // factory methods
-  static ModbusCommandItem create_read_command(
-      ModbusComponent *modbusdevice, ModbusFunctionCode function_code, uint16_t start_address, uint16_t register_count,
-      std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)> &&handler) {
-    ModbusCommandItem cmd;
-    cmd.modbusdevice = modbusdevice;
-    cmd.function_code = function_code;
-    cmd.register_address = start_address;
-    cmd.expected_response_size = register_count * 2;
-    cmd.register_count = register_count;
-    cmd.on_data_func = std::move(handler);
-    // adjust expected response size for ReadCoils and DiscretInput
-    if (cmd.function_code == ModbusFunctionCode::READ_COILS) {
-      cmd.expected_response_size = (register_count + 7) / 8;
-    }
-    if (cmd.function_code == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
-      cmd.expected_response_size = 1;
-    }
-    return cmd;
-  }
 
-  static ModbusCommandItem create_read_command(ModbusComponent *modbusdevice, ModbusFunctionCode function_code,
-                                               uint16_t start_address, uint16_t register_count) {
-    ModbusCommandItem cmd;
-    cmd.modbusdevice = modbusdevice;
-    cmd.function_code = function_code;
-    cmd.register_address = start_address;
-    cmd.expected_response_size = register_count * 2;
-    cmd.register_count = register_count;
-    cmd.on_data_func = [modbusdevice](ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> data) {
-      modbusdevice->on_register_data(function_code, start_address, data);
-    };
-    // adjust expected response size for ReadCoils and DiscretInput
-    if (cmd.function_code == ModbusFunctionCode::READ_COILS) {
-      cmd.expected_response_size = (register_count + 7) / 8;
-    }
-    if (cmd.function_code == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
-      cmd.expected_response_size = 1;
-    }
-    return cmd;
-  }
-
-  static ModbusCommandItem create_write_multiple_command(ModbusComponent *modbusdevice, uint16_t start_address,
-                                                         uint16_t register_count, const std::vector<uint16_t> &values);
-  static ModbusCommandItem create_write_single_command(ModbusComponent *modbusdevice, uint16_t start_address,
-                                                       int16_t value);
-};
 
 }  // namespace modbus_component
 }  // namespace esphome
