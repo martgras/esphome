@@ -29,8 +29,11 @@ class Modbus : public uart::UARTDevice, public Component {
 
   float get_setup_priority() const override;
 
-  void send(uint8_t address, uint8_t function, uint16_t start_address, uint16_t register_count,
-            const uint16_t *payload = nullptr);
+  void send(uint8_t address, uint8_t function_code, uint16_t start_address, uint16_t number_of_entities,
+            uint8_t payload_len = 0, const uint8_t *payload = nullptr);
+
+  void send_words(uint8_t address, uint8_t function, uint16_t start_address, uint16_t register_count,
+             const uint16_t *payload = nullptr);
 
   /** RX,TX Control pin Ref: https://github.com/greays/esphome/blob/master/esphome/components/rs485/rs485.h */
   void set_ctrl_pin(uint8_t ctrl_pin) {
@@ -54,8 +57,8 @@ class ModbusDevice {
   virtual void on_modbus_data(const std::vector<uint8_t> &data) = 0;
   // provide a default implementation to avoid breaking existing code
   virtual void on_modbus_error(uint8_t function_code, uint8_t exception_code) {}
-  void send(uint8_t function_code, uint16_t start_address, uint16_t num_values, const uint16_t *payload = nullptr) {
-    this->parent_->send(this->address_, function_code, start_address, num_values, payload);
+  void send(uint8_t function_code, uint16_t start_address, uint16_t num_values,uint8_t payload_len = 0, const uint8_t *payload = nullptr) {
+    this->parent_->send(this->address_, function_code, start_address, num_values, payload_len, payload);
   }
 
  protected:

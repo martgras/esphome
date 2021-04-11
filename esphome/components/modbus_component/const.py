@@ -112,6 +112,7 @@ CONF_REGISTER_COUNT = "register_count"
 CONF_RESPONSE_SIZE = "response_size"
 CONF_SKIP_UPDATES = "skip_updates"
 CONF_HEX_ENCODE = "hex_encode"
+CONF_MODBUSCOMPONENT_ID = "modbuscomponent_id"
 
 UNIT_KWATT_HOURS = "kWh"
 UNIT_AMPERE_HOURS = "Ah"

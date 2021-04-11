@@ -121,5 +121,3 @@ tests/build/
 tests/.esphome/
 /.temp-clang-tidy.cpp
 .pio/
-esphome/components/modbus_component/.vs/
-.vs/
