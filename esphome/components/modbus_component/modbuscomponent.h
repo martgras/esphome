@@ -140,6 +140,7 @@ class ModbusSwitch : public Component, public switch_::Switch {
     this->connected_sensor_ = connected_sensor;
   }
 
+
   ModbusFunctionCode register_type;
   uint16_t start_address;
   uint8_t offset;
@@ -165,7 +166,6 @@ struct SensorItem {
   SensorValueType sensor_value_type;
 
   int64_t last_value;
-  std::function<float(int64_t)> transform_expression;
 
   virtual Nameable *get_sensor() = 0;
   virtual std::string const &get_name() = 0;
@@ -302,7 +302,7 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
 
   void add_sensor(sensor::Sensor *sensor, ModbusFunctionCode register_type, uint16_t start_address, uint8_t offset,
                   uint32_t bitmask, SensorValueType value_type = SensorValueType::U_WORD, int register_count = 1,
-                  uint8_t skip_updates = 0, float scale_factor = 1.0) {
+                  uint8_t skip_updates = 0) {
     auto new_item = make_unique<FloatSensorItem>(sensor);
     new_item->register_type = register_type;
     new_item->start_address = start_address;
@@ -312,8 +312,6 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
     // used to cache prev. value.
     // because values are  only in the int32_t range INT64_MIN is a safe "marker" value
     new_item->last_value = INT64_MIN;
-    // Default transformation is divide by 100
-    new_item->transform_expression = [scale_factor](int64_t val) { return val * scale_factor; };
     new_item->register_count = register_count;
     new_item->skip_updates = skip_updates;
     sensormap[new_item->getkey()] = std::move(new_item);
@@ -335,15 +333,13 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
 
     new_item->skip_updates = skip_updates;
     // not sure we need it anymore
-    new_item->transform_expression = [bitmask](int64_t val) { return (val & bitmask & 0x0000FFFFF) ? 1 : 0; };
     auto key = new_item->getkey();
 
     // If this is coil with read/write we can created a switch item on the fly
     // if create_switch is true then the binary_sensor will be changed to internal and a switch with the same name is
     // created when the binary_sensor value is updated the change will be synced to the switch item and vice versa
     if (create_switch && (register_type == ModbusFunctionCode::READ_COILS)) {
-      auto new_switch =
-          make_unique<ModbusSwitch>(ModbusFunctionCode::READ_COILS, start_address, offset, bitmask);
+      auto new_switch = make_unique<ModbusSwitch>(ModbusFunctionCode::READ_COILS, start_address, offset, bitmask);
       new_item->sensor_->set_internal(true);  // Make the BinarySensor internal and present a switch instead
       App.register_component(new_switch.get());
       App.register_switch(new_switch.get());
@@ -398,10 +394,6 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
     new_item->register_count = 1;
     new_item->skip_updates = 0;
     new_item->modbus_switch_->set_modbus_parent(this);
-    // not sure we need it anymore
-    // new_item->transform_expression = [bitmask](int64_t val) { return (val & bitmask & 0x0000FFFFF) ? 1 : 0; };
-    //    auto key = new_item->getkey();
-    //  sensormap[key] = std::move(new_item);
   }
   size_t create_register_ranges();
 
@@ -451,9 +443,6 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
   void on_modbus_error(uint8_t function_code, uint8_t exception_code) override;
 
   void dump_config() override;
-  // set the RTC Clock of the controller to current time. Note: make sure to add sntp config
-  void set_realtime_clock_to_now();
-
   void on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address,
                                   const std::vector<uint8_t> &data);
   void on_register_data(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data);
@@ -464,15 +453,12 @@ class ModbusComponent : public PollingComponent, public modbus::ModbusDevice {
     // not very effective but the queue is never really large
     for (auto &item : command_queue_) {
       if (item->register_address == command.register_address && item->register_count == command.register_count &&
-          item->function_code == command.function_code && item->payload.size() == command.payload.size()) {
+          item->function_code == command.function_code) {
         ESP_LOGW(MODBUS_TAG, "Duplicate modbus command found");
-        // is the payload also equal ?
-        auto i = item->payload.size();
-        while (i > 0 && item->payload[i - 1] == command.payload[i - 1]) {
-          i--;
-        }
-        if (i == 0)
-          return;  // command already queued
+        // update the payload of the queued command
+        // replaces a previous command
+        item->payload = command.payload;
+        return;
       }
     }
     command_queue_.push_back(std::move(make_unique<ModbusCommandItem>(command)));
