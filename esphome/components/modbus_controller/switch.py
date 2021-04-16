@@ -4,14 +4,14 @@ import esphome.codegen as cg
 
 
 from esphome.const import CONF_ID, CONF_ADDRESS, CONF_OFFSET
-from .. import modbus_component_ns, MODBUS_FUNCTION_CODE
-from ..const import CONF_MODBUSCOMPONENT_ID, CONF_MODBUS_FUNCTIONCODE, CONF_BITMASK
+from . import modbus_controller_ns, MODBUS_FUNCTION_CODE
+from .const import CONF_MODBUSCOMPONENT_ID, CONF_MODBUS_FUNCTIONCODE, CONF_BITMASK
 
-DEPENDENCIES = ["modbus_component"]
+DEPENDENCIES = ["modbus_controller"]
 CODEOWNERS = ["@martgras"]
 
 
-ModbusSwitch = modbus_component_ns.class_("ModbusSwitch", switch.Switch, cg.Component)
+ModbusSwitch = modbus_controller_ns.class_("ModbusSwitch", switch.Switch, cg.Component)
 
 CONFIG_SCHEMA = switch.SWITCH_SCHEMA.extend(
     {

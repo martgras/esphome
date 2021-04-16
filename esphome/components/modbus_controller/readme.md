@@ -11,6 +11,105 @@ Custom command can be sent to the slave using lambdas
 
 Tested using an EPEVER Tracer2210AN MPPT controller and PZEM-017 
 
+
+
+## Note - breaking change ##
+
+With the commit from April 22th the code was refactored to better align with other esphome components
+Changes: 
+- renamed the componened from modbus_component to modbus_controller
+
+- previously a somewhat odd yaml structure was used where modbus_component was defined as a sensor itself 
+
+````
+modbus:
+  id: modbus_epsolar
+  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+
+### Note enabling all sensors will probably cause a stackoverflow
+### https://github.com/esphome/issues/issues/855
+sensor:
+  - platform: modbus_controller
+    modbus_id: modbus_epsolar
+    command_throttle: 0ms
+    id: traceranx
+    ## the Modbus device addr
+    address: 0x1
+    ## Any modbus registers not already implemented can be defined here
+    ##
+    sensors:
+      - id: array_rated_voltage
+        name: "array_rated_voltage"
+        address: 0x3000
+````
+
+this has now changed to 
+
+````
+modbus:
+  id: modbus_epsolar
+  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+
+### Note enabling all sensors will probably cause a stackoverflow
+### https://github.com/esphome/issues/issues/855
+modbus_controller:
+  modbus_id: modbus_epsolar
+  command_throttle: 0ms
+  id: traceranx
+  ## the Modbus device addr
+  address: 0x1
+  ## Any modbus registers not already implemented can be defined here
+  ##
+  sensors:
+    - id: array_rated_voltage
+      name: "array_rated_voltage"
+      address: 0x3000
+      offset: 0
+      unit_of_measurement: "V"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+      skip_updates: 60
+      filters:
+      - multiply: 0.01
+````
+
+- modbus sensors can be directly defined (inline) with the modbus_controller component or using the "default" esphome schema :
+
+````
+modbus_controller:
+  modbus_id: modbus_epsolar
+  command_throttle: 0ms
+  id: traceranx
+  ## the Modbus device addr
+  address: 0x1
+
+sensors:
+  - platform: modbus_controller
+    id: array_rated_voltage
+    name: "array_rated_voltage"
+    address: 0x3000
+    offset: 0
+    unit_of_measurement: "V"
+    modbus_functioncode: "read_input_registers"
+    value_type: U_WORD
+    accuracy_decimals: 1
+    skip_updates: 60
+    filters:
+    - multiply: 0.01
+````
+
+While the "inline" variant is a slight derivation from the esphome standards it helps to keep all definitons together and saves you from repeating the platfrom line for every sensor. 
+Technically there is no difference between the "inline" and the standard definions approach.
+Because the project started supporting only "inline" I'm keeping it in the code because it doesn't impact the code size and is a bit more convient. The additional work to support boths schemata is done in the python scripts generating the C++ code 
+
+
+
+
+
+
 ## Hardware setup
 
 I'm using a cheap RS 485 module connected to an ESP32
@@ -27,7 +126,7 @@ The pins used on the ESP32 side can be changed there is no special reason I chos
 
 ```
 # Clone repo
-git clone https://github.com/martgras/esphome.git -b modbus_component
+git clone https://github.com/martgras/esphome.git -b modbus_controller
 
 # Install ESPHome
 cd esphome/
@@ -39,7 +138,7 @@ esphome <path to your config.yaml> run
 ```
 
 
-[Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_component/testconfig/epever.yaml)
+[Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_controller/esphome/components/modbus_controller/testconfig/epever.yaml)
 
 
 ## Current status
@@ -76,7 +175,7 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
 #### modbus component:
 
 
-  - platform: modbus_component
+  - platform: modbus_controller
   - cmodbus_id: id of the modbus hub
   - command_throttle:  milliseconds between 2 requests to the slave. Some slaves limit the rate of requests they can handle (e.g. only 1 request/s). 
   - id: component id
@@ -174,12 +273,12 @@ If they differ the time of the esp is sent to the EPEVER controller.
             - lambda: |-
                 ESP_LOGV("main", "decoding rtc hex encoded raw data: %s", x.c_str());
                 uint8_t h=0,m=0,s=0,d=0,month_=0,y = 0 ;
-                m = esphome::modbus_component::byte_from_hex_str(x,0);
-                s = esphome::modbus_component::byte_from_hex_str(x,1);
-                d = esphome::modbus_component::byte_from_hex_str(x,2);
-                h = esphome::modbus_component::byte_from_hex_str(x,3);
-                y = esphome::modbus_component::byte_from_hex_str(x,4);
-                month_ = esphome::modbus_component::byte_from_hex_str(x,5);
+                m = esphome::modbus_controller::byte_from_hex_str(x,0);
+                s = esphome::modbus_controller::byte_from_hex_str(x,1);
+                d = esphome::modbus_controller::byte_from_hex_str(x,2);
+                h = esphome::modbus_controller::byte_from_hex_str(x,3);
+                y = esphome::modbus_controller::byte_from_hex_str(x,4);
+                month_ = esphome::modbus_controller::byte_from_hex_str(x,5);
                 // Now check if the rtc time of the controller is ok and correct it
                 time_t now = ::time(nullptr);
                 struct tm *time_info = ::localtime(&now);
@@ -195,7 +294,7 @@ If they differ the time of the esp is sent to the EPEVER controller.
                   std::vector<uint16_t> rtc_data = {uint16_t((minutes << 8) | seconds), uint16_t((day << 8) | hour),
                                                     uint16_t((year << 8) | month)};
                   // Create a modbus command item with the time information as the payload
-                  esphome::modbus_component::ModbusCommandItem set_rtc_command = esphome::modbus_component::ModbusCommandItem::create_write_multiple_command(traceranx, 0x9013, 3, rtc_data);
+                  esphome::modbus_controller::ModbusCommandItem set_rtc_command = esphome::modbus_controller::ModbusCommandItem::create_write_multiple_command(traceranx, 0x9013, 3, rtc_data);
                   // Submit the command to the send queue
                   traceranx->queue_command(set_rtc_command);
                   ESP_LOGI("ModbusLambda", "EPSOLAR RTC set to %02d:%02d:%02d %02d.%02d.%04d", hour, minutes, seconds, day, month, year + 2000);

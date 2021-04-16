@@ -3,11 +3,11 @@ import esphome.config_validation as cv
 from esphome import automation
 from esphome.components import mqtt
 from esphome.components import (
-    sensor,
+    sensor as core_sensor,
     modbus,
-    binary_sensor,
-    text_sensor,
-    switch,
+    binary_sensor as core_binary_sensor,
+    text_sensor as core_text_sensor,
+    switch as core_switch,
 )
 from esphome.core import coroutine
 from esphome.util import Registry
@@ -37,31 +37,38 @@ CODEOWNERS = ["@martgras"]
 
 AUTO_LOAD = [
     "modbus",
+    "sensor",
     "binary_sensor",
     "text_sensor",
     "status",
     "switch",
-    "modbus_component",
 ]
 
 
 # pylint: disable=invalid-name
-text_sensor_ns = cg.esphome_ns.namespace("text_sensor")
-TextSensor = text_sensor_ns.class_("TextSensor", cg.Nameable)
-
-modbus_component_ns = cg.esphome_ns.namespace("modbus_component")
-ModbusComponent = modbus_component_ns.class_(
-    "ModbusComponent", cg.PollingComponent, modbus.ModbusDevice
+modbus_controller_ns = cg.esphome_ns.namespace("modbus_controller")
+ModbusController = modbus_controller_ns.class_(
+    "ModbusController", cg.PollingComponent, modbus.ModbusDevice
 )
-RawData = modbus_component_ns.struct("RawData")
-RawDataCodeTrigger = modbus_component_ns.class_(
+RawData = modbus_controller_ns.struct("RawData")
+RawDataCodeTrigger = modbus_controller_ns.class_(
     "RawDataCodeTrigger", automation.Trigger.template(RawData)
 )
 
-ModbusSwitch = modbus_component_ns.class_("ModbusSwitch", switch.Switch, cg.Component)
+ModbusSwitch = modbus_controller_ns.class_(
+    "ModbusSwitch", core_switch.Switch, cg.Component
+)
 
+ModbusTextSensor = modbus_controller_ns.class_("ModbusTextSensor", cg.Nameable)
+ModbusSensor = modbus_controller_ns.class_(
+    "ModbusSensor", core_sensor.Sensor, cg.Component
+)
 
-ModbusFunctionCode_ns = cg.esphome_ns.namespace("modbus_component::ModbusFunctionCode")
+ModbusBinarySensor = modbus_controller_ns.class_(
+    "ModbusBinarySensor", core_binary_sensor.BinarySensor, cg.Component
+)
+
+ModbusFunctionCode_ns = cg.esphome_ns.namespace("modbus_controller::ModbusFunctionCode")
 ModbusFunctionCode = ModbusFunctionCode_ns.enum("ModbusFunctionCode")
 MODBUS_FUNCTION_CODE = {
     "read_coils": ModbusFunctionCode.READ_COILS,
@@ -74,7 +81,7 @@ MODBUS_FUNCTION_CODE = {
     "write_multiple_registers": ModbusFunctionCode.WRITE_MULTIPLE_REGISTERS,
 }
 
-SensorValueType_ns = cg.esphome_ns.namespace("modbus_component::SensorValueType")
+SensorValueType_ns = cg.esphome_ns.namespace("modbus_controller::SensorValueType")
 SensorValueType = SensorValueType_ns.enum("SensorValueType")
 SENSOR_VALUE_TYPE = {
     "RAW": SensorValueType.RAW,
@@ -99,8 +106,9 @@ CONF_CREATE_SWITCH = "create_switch"
 MODBUS_REGISTRY = Registry()
 validate_modbus_range = cv.validate_registry("sensors", MODBUS_REGISTRY)
 
-sensor_entry = sensor.SENSOR_SCHEMA.extend(
+sensor_entry = core_sensor.SENSOR_SCHEMA.extend(
     {
+        cv.GenerateID(): cv.declare_id(ModbusSensor),
         cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
         cv.Optional(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET): cv.int_,
@@ -115,8 +123,9 @@ sensor_entry = sensor.SENSOR_SCHEMA.extend(
 #            mqtt.MQTTSwitchComponent
 #        ),
 
-binary_sensor_entry = binary_sensor.BINARY_SENSOR_SCHEMA.extend(
+binary_sensor_entry = core_binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     {
+        cv.GenerateID(): cv.declare_id(ModbusBinarySensor),
         cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
         cv.Optional(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET): cv.int_,
@@ -126,7 +135,7 @@ binary_sensor_entry = binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     }
 )
 
-modbus_switch_entry = switch.SWITCH_SCHEMA.extend(
+modbus_switch_entry = core_switch.SWITCH_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSwitch),
         cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
@@ -136,9 +145,9 @@ modbus_switch_entry = switch.SWITCH_SCHEMA.extend(
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
-text_sensor_entry = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+text_sensor_entry = core_text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {
-        cv.GenerateID(): cv.declare_id(TextSensor),
+        cv.GenerateID(): cv.declare_id(ModbusTextSensor),
         cv.Optional(CONF_ON_RAW): automation.validate_automation(
             {
                 cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(RawDataCodeTrigger),
@@ -181,7 +190,7 @@ MODBUS_CONFIG_SCHEMA = (
 )
 
 
-def modbus_component_schema(device_address=0x1):
+def modbus_controller_schema(device_address=0x1):
     return (
         cv.Schema(
             {
@@ -211,7 +220,7 @@ ALLBITS = 0xFFFFFFFF
 CONFIG_SCHEMA = (
     MODBUS_CONFIG_SCHEMA.extend(
         {
-            cv.GenerateID(): cv.declare_id(ModbusComponent),
+            cv.GenerateID(): cv.declare_id(ModbusController),
         }
     )
     .extend(cv.polling_component_schema("60s"))
@@ -227,7 +236,7 @@ def to_code(config):
     if config.get("sensors"):
         conf = config["sensors"]
         for cfg in conf:
-            sens = yield sensor.new_sensor(cfg)
+            sens = yield new_sensor(cfg)
             cg.add(
                 var.add_sensor(
                     sens,
@@ -243,7 +252,7 @@ def to_code(config):
     if config.get("binary_sensors"):
         conf = config["binary_sensors"]
         for cfg in conf:
-            sens = yield binary_sensor.new_binary_sensor(cfg)
+            sens = yield new_binary_sensor(cfg)
             cg.add(
                 var.add_binarysensor(
                     sens,
@@ -302,9 +311,25 @@ def build_modbus_registers(config):
 
 
 @coroutine
+def new_sensor(config):
+    var = cg.new_Pvariable(config[CONF_ID], config[CONF_NAME])
+    yield cg.register_component(var, config)
+    yield core_sensor.register_sensor(var, config)
+    yield var
+
+
+@coroutine
+def new_binary_sensor(config):
+    var = cg.new_Pvariable(config[CONF_ID], config[CONF_NAME])
+    yield cg.register_component(var, config)
+    yield core_binary_sensor.register_binary_sensor(var, config)
+    yield var
+
+
+@coroutine
 def new_text_sensor(config):
     var = cg.new_Pvariable(config[CONF_ID], config[CONF_NAME])
-    yield text_sensor.register_text_sensor(var, config)
+    yield core_text_sensor.register_text_sensor(var, config)
     yield var
 
 
@@ -319,5 +344,5 @@ def new_modbus_switch(config):
         config[CONF_BITMASK],
     )
     yield cg.register_component(var, config)
-    yield switch.register_switch(var, config)
+    yield core_switch.register_switch(var, config)
     yield var
