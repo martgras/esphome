@@ -160,7 +160,7 @@ MODBUS_CONFIG_SCHEMA = (
         {
             cv.Optional(CONF_MODBUSDEVICE_ADDRESS, default=0x1): cv.hex_uint8_t,
             cv.Optional(
-                CONF_COMMAND_THROTTLE, default=0x0
+                CONF_COMMAND_THROTTLE, default="0ms"
             ): cv.positive_time_period_milliseconds,
             cv.Optional("sensors"): cv.All(
                 cv.ensure_list(sensor_entry), cv.Length(min=0)
