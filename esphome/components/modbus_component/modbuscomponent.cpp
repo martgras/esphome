@@ -352,12 +352,7 @@ float FloatSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
     default:
       break;
   }
-
-  if (transform_expression != nullptr) {
-    result = transform_expression(value);
-  } else {
-    result = float(value);
-  }
+  result = float(value);
 
   // No need to publish if the value didn't change since the last publish
   // can reduce mqtt traffic considerably if many sensors are used

@@ -50,7 +50,7 @@ modbus:
 sensor:
   - platform: modbus_component
     modbus_id: modbus_epsolar
-    command_throttle: 0
+    command_throttle: 0ms
     id: traceranx
     ## the Modbus device addr
     address: 0x1
@@ -146,7 +146,6 @@ sensor:
         modbus_functioncode: "read_input_registers"
         value_type: U_WORD
         accuracy_decimals: 1
-        scale_factor: 0.01
         filters:
         - multiply: 0.01
 
@@ -158,7 +157,6 @@ sensor:
         modbus_functioncode: "read_input_registers"
         value_type: U_WORD
         accuracy_decimals: 1
-        scale_factor: 0.01
         filters:
         - multiply: 1.0
 
@@ -494,7 +492,6 @@ sensor:
         - lambda: return id(length_of_night_minutes).state  + ( 60 * x);
 
     binary_sensors:
-
       - id: charging_input_volt_failure
         name: "Charging Input Volt Failure"
         modbus_functioncode: read_input_registers
@@ -604,7 +601,7 @@ sensor:
 
     switches:
       - id: clear_energy_stats
-        modbus_functioncode: read_coils
+        modbus_functioncode: write_single_coil
         address: 0x14
         offset: 0
         name: "Clear generating  electricity statistic"

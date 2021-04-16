@@ -24,7 +24,6 @@ from esphome.const import (
 from .const import (
     CONF_MODBUSDEVICE_ADDRESS,
     CONF_VALUE_TYPE,
-    CONF_SCALE_FACTOR,
     CONF_REGISTER_COUNT,
     CONF_MODBUS_FUNCTIONCODE,
     CONF_COMMAND_THROTTLE,
@@ -107,7 +106,6 @@ sensor_entry = sensor.SENSOR_SCHEMA.extend(
         cv.Optional(CONF_OFFSET): cv.int_,
         cv.Optional(CONF_BITMASK, default=0xFFFFFFFF): cv.hex_uint32_t,
         cv.Optional(CONF_VALUE_TYPE): cv.enum(SENSOR_VALUE_TYPE),
-        cv.Optional(CONF_SCALE_FACTOR, default=1.0): cv.float_,
         cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
     }
@@ -161,7 +159,9 @@ MODBUS_CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.Optional(CONF_MODBUSDEVICE_ADDRESS, default=0x1): cv.hex_uint8_t,
-            cv.Optional(CONF_COMMAND_THROTTLE, default=0x0): cv.hex_uint16_t,
+            cv.Optional(
+                CONF_COMMAND_THROTTLE, default=0x0
+            ): cv.positive_time_period_milliseconds,
             cv.Optional("sensors"): cv.All(
                 cv.ensure_list(sensor_entry), cv.Length(min=0)
             ),
@@ -238,7 +238,6 @@ def to_code(config):
                     cfg[CONF_VALUE_TYPE],
                     cfg[CONF_REGISTER_COUNT],
                     cfg[CONF_SKIP_UPDATES],
-                    cfg[CONF_SCALE_FACTOR],
                 )
             )
     if config.get("binary_sensors"):

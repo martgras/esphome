@@ -73,19 +73,57 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
     - S_DOUBLE
   - scale factor:  most values are returned as 16 bit integer values. To get the actual value the raw value is usually divided by 100.
   For example, if the raw data returned for input voltage is 1350 the actual valus is 13.5 (V). The scale_factor parameter is used for the conversion
+#### modbus component:
+
+
+  - platform: modbus_component
+  - cmodbus_id: id of the modbus hub
+  - command_throttle:  milliseconds between 2 requests to the slave. Some slaves limit the rate of requests they can handle (e.g. only 1 request/s). 
+  - id: component id
+  - address: modbus slave address
+
 
 #### sensor 
   - modbus_functioncode: type of register
-   - address: start address of the first register in a range
-   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
+  - address: start address of the first register in a range
+  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
   - bitmask: some values are packed in a response. The bitmask can be used to extract a value from the response.  For example, the high byte value register 0x9013 contains the minute value of the current time. To only exctract this value use bitmask: 0xFF00.  The result will be automatically right shifted by the number of 0 before the first 1 in the bitmask.  For 0xFF00 (0b1111111100000000) the result is shifted 8 posistions.  More than one sensor can use the same address/offset if the bitmask is different.
 
 ### binarysensor
   - modbus_functioncode: type of register
-   - address: start address of the first register in a range
-   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
+  - address: start address of the first register in a range
+  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
   - bitmask: some values are packed in a response. The bitmask is used to determined if the result is true or false
   - create_switch: if this is a coil register setting this to true dynamically creates a switch coponent with the same name and sets the binarysensor to internal. Whenever the sensor reads a new value the state is synced with the switch component and vice versa (something like a binarysensorswitch)
+  It is a shortcut for archiving this: 
+
+  ````yaml
+      binary_sensors:
+      - id: force_load
+        modbus_functioncode: read_coils
+        address: 6
+        offset: 0
+        name: "Force Load on/off"
+        internal: true 
+        bitmask: 1
+        on_state:
+          if:
+            condition:
+              binary_sensor.is_on: force_load
+            then: 
+              - switch.turn_on: force_load_switch
+            else:
+              - switch.turn_off: force_load_switch
+
+    switches:
+      - id: force_load_switch
+        modbus_functioncode: write_single_coil
+        address: 6
+        offset: 0
+        name: "Force load on"
+        bitmask: 1
+  ````
+
 
 
 #### text sensor:
@@ -95,7 +133,7 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
    - response_size: response number of bytes of the response
    - hex_encode: true | false     If the response is binary data it can't be published. Since a text sensor only publishes strings the hex_encode option encodes binary data as 2 byte hex string. 0x71 will be sent as "71". This allows you to proces the data in a on_value lambda. See the example below how to convert the binary time data to a string and also how to set the time of the controller 
    - register_count: The number of registers this data point spans. Default is 1 
-  - bitmask: some values are packed in a single response word. bitmask is used to convert to a bool value. For example, bit 8 of the register 0x3200 indicates an battery error. Therefore, the bitmask is 256.  The operation is `result = (raw value & bitmask != 0)`. More than one sensor can use the same address/offset if the bitmask is different
+   - bitmask: some values are packed in a single response word. bitmask is used to convert to a bool value. For example, bit 8 of the register 0x3200 indicates an battery error. Therefore, the bitmask is 256.  The operation is `result = (raw value & bitmask != 0)`. More than one sensor can use the same address/offset if the bitmask is different
    
 #### switch
   - modbus_functioncode: type of register
