@@ -4,11 +4,11 @@
 #include <sstream>
 #include <iomanip>
 
-#include "modbuscomponent.h"
+#include "modbuscontroller.h"
 #define TAG MODBUS_TAG
 
 namespace esphome {
-namespace modbus_component {
+namespace modbus_controller {
 
 std::string get_hex_string(const std::vector<uint8_t> &data) {
   std::ostringstream output;
@@ -25,7 +25,15 @@ std::string get_hex_string(const std::vector<uint8_t> &data) {
   return output.str();
 }
 
-void ModbusComponent::setup() { this->create_register_ranges(); }
+void ModbusSensor::log() { LOG_SENSOR(MODBUS_TAG, get_name().c_str(), this); }
+
+void ModbusBinarySensor::log() { LOG_BINARY_SENSOR(MODBUS_TAG, get_name().c_str(), this); }
+
+void ModbusTextSensor::log() { LOG_TEXT_SENSOR(MODBUS_TAG, get_name().c_str(), this); }
+
+void ModbusSwitch::log() { LOG_SWITCH(MODBUS_TAG, get_name().c_str(), this); }
+
+void ModbusController::setup() { this->create_register_ranges(); }
 
 /*
  To work with the existing modbus class and avoid polling for responses a command queue is used.
@@ -33,7 +41,7 @@ void ModbusComponent::setup() { this->create_register_ranges(); }
  to handle the response from the device.
  Once the response has been processed it is removed from the queue and the next command is sent
 */
-bool ModbusComponent::send_next_command_() {
+bool ModbusController::send_next_command_() {
   uint32_t command_delay = millis() - this->last_command_timestamp_;
 
   if (!sending_ && (command_delay > this->command_throttle_) && (!command_queue_.empty())) {
@@ -53,7 +61,7 @@ bool ModbusComponent::send_next_command_() {
 }
 
 // Dispatch the response to the registered handler
-void ModbusComponent::on_modbus_data(const std::vector<uint8_t> &data) {
+void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
   ESP_LOGD(MODBUS_TAG, "Modbus data %zu", data.size());
 
   auto &current_command = this->command_queue_.front();
@@ -64,7 +72,7 @@ void ModbusComponent::on_modbus_data(const std::vector<uint8_t> &data) {
     command_queue_.pop_front();
   }
 }
-void ModbusComponent::on_modbus_error(uint8_t function_code, uint8_t exception_code) {
+void ModbusController::on_modbus_error(uint8_t function_code, uint8_t exception_code) {
   ESP_LOGE(MODBUS_TAG, "Modbus error function code: 0x%X exception: %d ", function_code, exception_code);
   this->sending_ = false;
   // Remove pending command waiting for a response
@@ -80,8 +88,8 @@ void ModbusComponent::on_modbus_error(uint8_t function_code, uint8_t exception_c
   }
 }
 
-void ModbusComponent::on_register_data(ModbusFunctionCode function_code, uint16_t start_address,
-                                       const std::vector<uint8_t> &data) {
+void ModbusController::on_register_data(ModbusFunctionCode function_code, uint16_t start_address,
+                                        const std::vector<uint8_t> &data) {
   ESP_LOGD(MODBUS_TAG, "data for register address : 0x%X : ", start_address);
 
   auto vec_it = find_if(begin(register_ranges_), end(register_ranges_), [=](RegisterRange const &r) {
@@ -106,17 +114,30 @@ void ModbusComponent::on_register_data(ModbusFunctionCode function_code, uint16_
       r.modbus_ = this;
       map_it->second->raw_data_callback_.call(r);
       float val = map_it->second->parse_and_publish(data);
-      ESP_LOGV(MODBUS_TAG, "Sensor : %s = %.02f ", map_it->second->get_name().c_str(), val);
+      ESP_LOGV(MODBUS_TAG, "Sensor : %s = %.02f ", map_it->second->get_sensorname().c_str(), val);
     }
     map_it++;
   }
 }
 
+void ModbusController::update_range(RegisterRange &r) {
+  ESP_LOGD(MODBUS_TAG, "Range : %X Size: %x (%d) skip: %d", r.start_address, r.register_count, (int) r.register_type,
+           r.skip_updates_counter);
+  if (r.skip_updates_counter == 0) {
+    ModbusCommandItem command_item =
+        ModbusCommandItem::create_read_command(this, r.register_type, r.start_address, r.register_count);
+    queue_command(command_item);
+    yield();
+    r.skip_updates_counter = r.skip_updates;  // reset counter to config value
+  } else {
+    r.skip_updates_counter--;
+  }
+}
 //
 // Queue the modbus requests to be send.
 // Once we get a response to the command it is removed from the queue and the next command is send
 //
-void ModbusComponent::update() {
+void ModbusController::update() {
   static int UPDATE_CNT;
 
   if (UPDATE_CNT++ == 0) {  // Not sure what happens here. Can't connect via Wifi without skipping the first update.
@@ -132,6 +153,7 @@ void ModbusComponent::update() {
   }
 
   for (auto &r : this->register_ranges_) {
+    /*
     ESP_LOGD(MODBUS_TAG, "Range : %X Size: %x (%d) skip: %d", r.start_address, r.register_count, (int) r.register_type,
              r.skip_updates_counter);
     if (r.skip_updates_counter == 0) {
@@ -143,12 +165,14 @@ void ModbusComponent::update() {
     } else {
       r.skip_updates_counter--;
     }
+    */
+    update_range(r);
   }
   ESP_LOGI(MODBUS_TAG, "Modbus update complete Free Heap  %u bytes", ESP.getFreeHeap());
 }
 
 // walk through the sensors and determine the registerranges to read
-size_t ModbusComponent::create_register_ranges() {
+size_t ModbusController::create_register_ranges() {
   register_ranges_.clear();
   uint8_t n = 0;
   // map is already sorted by keys so we start with the lowest address ;
@@ -165,9 +189,10 @@ size_t ModbusComponent::create_register_ranges() {
     // use the lowest non zero value for the whole range
     // Because zero is the default value for skip_updates it is excluded from getting the min value.
 
-    ESP_LOGV(MODBUS_TAG, "Register:: 0x%X %d %d  0x%llx (%d) buffer_offset = %d (0x%X) skip=%u",
-             ix->second->start_address, ix->second->register_count, ix->second->offset, ix->second->getkey(),
-             total_register_count, buffer_offset, buffer_offset, ix->second->skip_updates);
+    ESP_LOGV(MODBUS_TAG, "Register '%s': 0x%X %d %d  0x%llx (%d) buffer_offset = %d (0x%X) skip=%u",
+             ix->second->get_sensorname().c_str(), ix->second->start_address, ix->second->register_count,
+             ix->second->offset, ix->second->getkey(), total_register_count, buffer_offset, buffer_offset,
+             ix->second->skip_updates);
     if (current_start_address != ix->second->start_address ||
         //  ( prev->second->start_address + prev->second->offset != ix->second->start_address) ||
         ix->second->register_type != prev->second->register_type) {
@@ -230,7 +255,7 @@ size_t ModbusComponent::create_register_ranges() {
   return register_ranges_.size();
 }
 
-void ModbusComponent::dump_config() {
+void ModbusController::dump_config() {
   ESP_LOGCONFIG(MODBUS_TAG, "EPSOLAR:");
   ESP_LOGCONFIG(MODBUS_TAG, "  Address: 0x%02X", this->address_);
   for (auto &item : this->sensormap) {
@@ -239,7 +264,7 @@ void ModbusComponent::dump_config() {
   create_register_ranges();
 }
 
-void ModbusComponent::loop() { send_next_command_(); }
+void ModbusController::loop() { send_next_command_(); }
 
 // Extract data from modbus response buffer
 template<typename T> T get_data(const std::vector<uint8_t> &data, size_t offset) {
@@ -260,20 +285,12 @@ template<typename T> T get_data(const std::vector<uint8_t> &data, size_t offset)
   }
 }
 
-void ModbusComponent::on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address,
-                                                 const std::vector<uint8_t> &data) {
+void ModbusController::on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address,
+                                                  const std::vector<uint8_t> &data) {
   ESP_LOGD(MODBUS_TAG, "Command ACK 0x%X %d ", get_data<uint16_t>(data, 0), get_data<int16_t>(data, 1));
 }
 
-std::atomic_bool ModbusComponent::sending_(false);
-
-void FloatSensorItem::log() { LOG_SENSOR("", sensor_->get_name().c_str(), this->sensor_); }
-
-void BinarySensorItem::log() { LOG_BINARY_SENSOR("", sensor_->get_name().c_str(), this->sensor_); }
-
-void TextSensorItem::log() { LOG_TEXT_SENSOR("", sensor_->get_name().c_str(), this->sensor_); }
-
-void ModbusSwitchItem::log() { LOG_SWITCH("", modbus_switch_->get_name().c_str(), this->modbus_switch_); }
+std::atomic_bool ModbusController::sending_(false);
 
 // void ModbusSwitchItem::log() { LOG_SWITCH("", sensor_->get_name().c_str(), this->sensor_); }
 
@@ -296,7 +313,7 @@ template<typename N> N mask_and_shift_by_rightbit(N data, uint32_t mask) {
   return 0;
 }
 
-float FloatSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
+float ModbusSensor::parse_and_publish(const std::vector<uint8_t> &data) {
   int64_t value = 0;  // int64_t because it can hold signed and unsigned 32 bits
   float result = NAN;
 
@@ -357,12 +374,12 @@ float FloatSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
   // No need to publish if the value didn't change since the last publish
   // can reduce mqtt traffic considerably if many sensors are used
   ESP_LOGVV(MODBUS_TAG, " SENSOR : new: %lld  old: %lld ", value, this->last_value);
-  if (value != this->last_value || this->sensor_->get_force_update()) {
+  if (value != this->last_value || this->get_force_update()) {
     // this->sensor_->raw_state = result;
-    this->sensor_->publish_state(result);
+    this->publish_state(result);
     this->last_value = value;
   } else {
-    ESP_LOGV(MODBUS_TAG, "SENSOR %s value didn't change - don't publish", get_name().c_str());
+    ESP_LOGV(MODBUS_TAG, "SENSOR %s value didn't change - don't publish", get_sensorname().c_str());
   }
   return result;
 }
@@ -372,7 +389,7 @@ inline bool coil_from_vector(int coil, const std::vector<uint8_t> &data) {
   return (data[data_byte] & (1 << (coil % 8))) > 0;
 }
 
-float BinarySensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
+float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
   int64_t value = 0;
   float result = NAN;
   switch (this->register_type) {
@@ -391,7 +408,7 @@ float BinarySensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
   result = float(value);
   // No need tp publish if the value didn't change since the last publish
   if (value != this->last_value) {
-    this->sensor_->publish_state(value != 0.0);
+    this->publish_state(value != 0.0);
     this->last_value = value;
     // Update the state of the connected switch
     if (this->modbus_switch != nullptr) {
@@ -401,14 +418,14 @@ float BinarySensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
   return result;
 }
 
-float TextSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
+float ModbusTextSensor::parse_and_publish(const std::vector<uint8_t> &data) {
   int64_t value = 0;
   float result = this->response_bytes_;
   std::ostringstream output;
   uint8_t max_items = this->response_bytes_;
   char buffer[4];
   for (auto b : data) {
-    if (this->hex_encode) {
+    if (this - hex_encode) {
       sprintf(buffer, "%02x", b);
       output << buffer;
     } else {
@@ -418,11 +435,11 @@ float TextSensorItem::parse_and_publish(const std::vector<uint8_t> &data) {
       }
     }
   }
-  this->sensor_->publish_state(output.str());
+  this->publish_state(output.str());
   return result;
 }
 
-float ModbusSwitchItem::parse_and_publish(const std::vector<uint8_t> &data) {
+float ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
   bool value = (data[0] != 0);
   switch (this->register_type) {
     case ModbusFunctionCode::READ_DISCRETE_INPUTS:
@@ -443,7 +460,7 @@ float ModbusSwitchItem::parse_and_publish(const std::vector<uint8_t> &data) {
 
 // factory methods
 ModbusCommandItem ModbusCommandItem::create_read_command(
-    ModbusComponent *modbusdevice, ModbusFunctionCode function_code, uint16_t start_address, uint16_t register_count,
+    ModbusController *modbusdevice, ModbusFunctionCode function_code, uint16_t start_address, uint16_t register_count,
     std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)>
         &&handler) {
   ModbusCommandItem cmd;
@@ -466,7 +483,7 @@ ModbusCommandItem ModbusCommandItem::create_read_command(
   return cmd;
 }
 
-ModbusCommandItem ModbusCommandItem::create_read_command(ModbusComponent *modbusdevice,
+ModbusCommandItem ModbusCommandItem::create_read_command(ModbusController *modbusdevice,
                                                          ModbusFunctionCode function_code, uint16_t start_address,
                                                          uint16_t register_count) {
   ModbusCommandItem cmd;
@@ -490,7 +507,7 @@ ModbusCommandItem ModbusCommandItem::create_read_command(ModbusComponent *modbus
   return cmd;
 }
 
-ModbusCommandItem ModbusCommandItem::create_write_multiple_command(ModbusComponent *modbusdevice,
+ModbusCommandItem ModbusCommandItem::create_write_multiple_command(ModbusController *modbusdevice,
                                                                    uint16_t start_address, uint16_t register_count,
                                                                    const std::vector<uint16_t> &values) {
   ModbusCommandItem cmd;
@@ -510,7 +527,7 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_command(ModbusCompone
   return cmd;
 }
 
-ModbusCommandItem ModbusCommandItem::create_write_single_coil(ModbusComponent *modbusdevice, uint16_t address,
+ModbusCommandItem ModbusCommandItem::create_write_single_coil(ModbusController *modbusdevice, uint16_t address,
                                                               bool value) {
   ModbusCommandItem cmd;
   cmd.modbusdevice = modbusdevice;
@@ -527,7 +544,7 @@ ModbusCommandItem ModbusCommandItem::create_write_single_coil(ModbusComponent *m
   return cmd;
 }
 
-ModbusCommandItem ModbusCommandItem::create_write_multiple_coils(ModbusComponent *modbusdevice, uint16_t start_address,
+ModbusCommandItem ModbusCommandItem::create_write_multiple_coils(ModbusController *modbusdevice, uint16_t start_address,
                                                                  const std::vector<bool> &values) {
   ModbusCommandItem cmd;
   cmd.modbusdevice = modbusdevice;
@@ -560,7 +577,7 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_coils(ModbusComponent
   return cmd;
 }
 
-ModbusCommandItem ModbusCommandItem::create_write_single_command(ModbusComponent *modbusdevice, uint16_t start_address,
+ModbusCommandItem ModbusCommandItem::create_write_single_command(ModbusController *modbusdevice, uint16_t start_address,
                                                                  int16_t value) {
   ModbusCommandItem cmd;
   cmd.modbusdevice = modbusdevice;
@@ -612,5 +629,10 @@ void ModbusSwitch::write_state(bool state) {
   publish_state(state);
 }
 
-}  // namespace modbus_component
+}  // namespace modbus_controller
 }  // namespace esphome
+
+/*
+
+
+*/
