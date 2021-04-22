@@ -36,7 +36,6 @@ uart:
   tx_pin: GPIO22
   rx_pin: GPIO23
   baud_rate: 115200
-  id: uart_1
 
 ota:
   safe_mode: True
@@ -57,6 +56,48 @@ time:
 tuya:
   time_id: sntp_time
 
+modbus:
+  id: modbus_epsolar
+
+modbus_controller:
+  modbus_id: modbus_epsolar
+  command_throttle: 0ms
+  id: traceranx
+  ## the Modbus device addr
+  address: 0x1
+  sensors:
+    - id: array_rated_voltage
+      name: "array_rated_voltage"
+      address: 0x3000
+      offset: 0
+      unit_of_measurement: "V"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+      skip_updates: 60
+      filters:
+        - multiply: 0.01
+
+  binary_sensors:
+    - id: charging_input_volt_failure
+      name: "Charging Input Volt Failure"
+      modbus_functioncode: read_input_registers
+      address: 0x3201
+      offset: 0
+      bitmask: 0xC000
+
+  text_sensors:
+    - name: "rtc_clock"
+      id: rtc_clock
+      internal: true
+      modbus_functioncode: read_holding_registers
+      address: 0x9013
+      offset: 0
+      register_count: 3
+      hex_encode: true
+      response_size: 6
+#end of modbus_controller
+
 sensor:
   - platform: homeassistant
     entity_id: sensor.hello_world
@@ -64,206 +105,52 @@ sensor:
   - platform: tuya
     id: tuya_sensor
     sensor_datapoint: 1
-  #
-  # platform sensor.apds9960 requires component apds9960
-  #
-  #  - platform: apds9960
-  #    type: proximity
-  #    name: APDS9960 Proximity
-  #  - platform: apds9960
-  #    type: clear
-  #    name: APDS9960 Clear
-  #  - platform: apds9960
-  #    type: red
-  #    name: APDS9960 Red
-  #  - platform: apds9960
-  #    type: green
-  #    name: APDS9960 Green
-  #  - platform: apds9960
-  #    type: blue
-  #    name: APDS9960 Blue
 
-  - platform: modbus_component
-    modbus_id: modbus_epsolar
-    id: traceranx
-    ## the Modbus device addr
-    address: 0x1
-    ## Any modbus registers not already implemented can be defined here
-    ##
-    sensors:
-      - id: pv_input_voltage
-        name: "PV array input voltage"
-        address: 0x3100
-        offset: 0
-        unit_of_measurement: "V" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: pv_input_current
-        name: "PV array input current"
-        address: 0x3100
-        offset: 1
-        unit_of_measurement: "A" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: pv_input_power
-        name: "PV array input power"
-        address: 0x3100
-        offset: 2
-        unit_of_measurement: "W" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_DOUBLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: battery_power
-        name: "Battery power"
-        address: 0x3100
-        offset: 6
-        unit_of_measurement: "W" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_DOUBLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: load_voltage
-        name: "Load voltage"
-        address: 0x3100
-        offset: 0xC
-        unit_of_measurement: "V" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: load_current
-        name: "Load Current"
-        address: 0x3100
-        offset: 0xD
-        unit_of_measurement: "V" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: load_power
-        name: "Load power"
-        address: 0x3100
-        offset: 0xE
-        unit_of_measurement: "W" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_DOUBLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: battery_temperature
-        name: "Battery temperature"
-        address: 0x3100
-        offset: 10
-        unit_of_measurement: "°C" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: device_temperature
-        name: "Device temperature"
-        address: 0x311A
-        offset: 0
-        unit_of_measurement: "%" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 1
-        accuracy_decimals: 1
-
-      - id: battery_soc
-        name: "Battery SOC"
-        address: 0x3100
-        offset: 11
-        unit_of_measurement: "°C" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 0.01
-        accuracy_decimals: 0
-
-      - id: remote_battery_temperature
-        name: "Remote battery temperature"
-        address: 0x311A
-        offset: 1
-        unit_of_measurement: "°C" ## for any other unit the value is returned in minutes
-        modbus_functioncode: "read_input_registers"
-        value_type: U_SINGLE
-        scale_factor: 0.01
-        accuracy_decimals: 1
-
-      - id: length_of_night_hours
-        address: 0x9065
-        offset: 0
-        unit_of_measurement: "h" ## for any other unit the value is returned in minutes
-        name: "Length of night"
-        modbus_functioncode: read_holding_registers
-        value_type: U_SINGLE
-        scale_factor: 1.0
-
-    binary_sensors:
-      - id: default_load_mode
-        modbus_functioncode: read_holding_registers
-        address: 0x906A
-        offset: 0
-        name: "Default Load On/Off"
-        bitmask: 1
-    update_interval: 30s
-  # - platform: modbus_component
-  #   id: modbase
-  #   binary_sensors:
-  #   - id: default_load_mode2
-  #     modbus_functioncode: read_holding_registers
-  #     address: 0x906A
-  #     offset: 0
-  #     name: 'Default Load On/Off 2'
-  #     bitmask: 1
-#        sensor:
-#        - sensor1:
-#          - offset: 1
-#            name: max
-#            value_type: 1
-#        - sensor1:
-#          - offset: 1
-#            name: max
-#            value_type: 1
-#      - start_address: 0x3300
-#        type: read_discrete_inputs
-#        sensor:
-#        - sensor1:
-#          - offset: 1
-#            name: max
-#            value_type: 1
-#        - sensor1:
-#          - offset: 1
-#            name: max
-#            value_type: 1
-
-#  ranges:
-#  - start_address: '0x3100'
-#    registerType: 0
-#    sensor:
-#     offset: 1
-#     name: max
-#     value_type: 1
-#    binarysensor:
-#      offset: 2
-#      name: max
-#      value_type: 1
+  - platform: modbus_controller
+    modbuscomponent_id: traceranx
+    id: array_rated_current
+    name: "array_rated_current"
+    address: 0x3000
+    offset: 2
+    unit_of_measurement: "V"
+    modbus_functioncode: "read_input_registers"
+    value_type: U_WORD
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+#
+# platform sensor.apds9960 requires component apds9960
+#
+#  - platform: apds9960
+#    type: proximity
+#    name: APDS9960 Proximity
+#  - platform: apds9960
+#    type: clear
+#    name: APDS9960 Clear
+#  - platform: apds9960
+#    type: red
+#    name: APDS9960 Red
+#  - platform: apds9960
+#    type: green
+#    name: APDS9960 Green
+#  - platform: apds9960
+#    type: blue
+#    name: APDS9960 Blue
 
 binary_sensor:
   - platform: tuya
     id: tuya_binary_sensor
     sensor_datapoint: 1
+
+  - platform: modbus_controller
+    modbuscomponent_id: traceranx
+    id: manual_control_load
+    modbus_functioncode: read_coils
+    address: 2
+    offset: 0
+    name: "manual control the load"
+    bitmask: 1
+    create_switch: True
 
 climate:
   - platform: tuya
@@ -277,6 +164,14 @@ switch:
   - platform: tuya
     id: tuya_switch
     switch_datapoint: 1
+
+  - platform: modbus_controller
+    modbuscomponent_id: traceranx
+    id: reset_to_fabric_default
+    name: "Reset to Factory Default"
+    modbus_functioncode: write_single_coil
+    address: 0x15
+    bitmask: 1
 
 light:
   - platform: fastled_clockless
@@ -338,3 +233,15 @@ display:
     lambda: |-
       it.rectangle(0, 0, it.get_width(), it.get_height());
 
+text_sensor:
+  - platform: modbus_controller
+    modbuscomponent_id: traceranx
+    name: "rtc clock test 2"
+    id: rtc_clock_test2
+    internal: true
+    modbus_functioncode: read_holding_registers
+    address: 0x9013
+    offset: 0
+    register_count: 3
+    hex_encode: true
+    response_size: 6

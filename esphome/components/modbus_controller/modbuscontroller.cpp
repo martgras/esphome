@@ -3,7 +3,13 @@
 #include "esphome/core/log.h"
 #include <sstream>
 #include <iomanip>
+#include <list>
 
+#include "esphome/core/application.h"
+#ifdef USE_MQTT
+#include "esphome/components/mqtt/mqtt_component.h"
+#include "esphome/components/mqtt/mqtt_switch.h"
+#endif
 #include "modbuscontroller.h"
 #define TAG MODBUS_TAG
 
@@ -26,6 +32,64 @@ std::string get_hex_string(const std::vector<uint8_t> &data) {
 }
 
 void ModbusSensor::log() { LOG_SENSOR(MODBUS_TAG, get_name().c_str(), this); }
+
+void ModbusController::add_sensor(ModbusSensor *new_item, ModbusFunctionCode register_type, uint16_t start_address,
+                                  uint8_t offset, uint32_t bitmask, SensorValueType value_type, int register_count,
+                                  uint8_t skip_updates) {
+  new_item->register_type = register_type;
+  new_item->start_address = start_address;
+  new_item->offset = offset;
+  new_item->bitmask = bitmask;
+  new_item->sensor_value_type = value_type;
+  new_item->register_count = register_count;
+  new_item->skip_updates = 0;
+  new_item->last_value = INT64_MIN;
+  uint64_t key = new_item->getkey();
+  sensormap[key] = new_item;
+}
+
+void ModbusController::add_binarysensor(ModbusBinarySensor *new_item, ModbusFunctionCode register_type,
+                                        uint16_t start_address, uint8_t offset, uint32_t bitmask, bool create_switch,
+                                        uint8_t skip_updates) {
+  // ModbusBinarySensor *new_item = new ModbusBinarySensor(new_item2->get_name()) ;
+
+  new_item->register_type = register_type;
+  new_item->start_address = start_address;
+  new_item->offset = offset;
+  new_item->bitmask = bitmask;
+  new_item->sensor_value_type = SensorValueType::BIT;
+  new_item->last_value = INT64_MIN;
+  if (register_type == ModbusFunctionCode::READ_COILS || register_type == ModbusFunctionCode::READ_DISCRETE_INPUTS)
+    new_item->register_count = offset + 1;
+  else
+    new_item->register_count = 1;
+
+  new_item->skip_updates = skip_updates;
+  auto key = new_item->getkey();
+
+  // If this is coil with read/write we can created a switch item on the fly
+  // if create_switch is true then the binary_sensor will be changed to internal and a switch with the same name is
+  // created when the binary_sensor value is updated the change will be synced to the switch item and vice versa
+  if (create_switch && (register_type == ModbusFunctionCode::READ_COILS)) {
+    auto new_switch = make_unique<ModbusSwitch>(ModbusFunctionCode::READ_COILS, start_address, offset, bitmask);
+    new_item->set_internal(true);  // Make the BinarySensor internal and present a switch instead
+    App.register_component(new_switch.get());
+    App.register_switch(new_switch.get());
+    new_switch->set_name(new_item->get_name());
+    new_switch->start_address = new_item->start_address;
+    new_switch->offset = new_item->offset;
+    new_switch->bitmask = new_item->bitmask;
+    new_switch->set_modbus_parent(this);
+    new_switch->set_connected_sensor(new_item);
+#ifdef USE_MQTT
+    auto mqtt_sw = make_unique<mqtt::MQTTSwitchComponent>(new_switch.get());
+    App.register_component(mqtt_sw.get());
+    new_item->mqtt_switch = std::move(mqtt_sw);
+#endif
+    new_item->modbus_switch = std::move(new_switch);
+  }
+  sensormap[key] = new_item;
+}
 
 void ModbusBinarySensor::log() { LOG_BINARY_SENSOR(MODBUS_TAG, get_name().c_str(), this); }
 
@@ -120,6 +184,22 @@ void ModbusController::on_register_data(ModbusFunctionCode function_code, uint16
   }
 }
 
+void ModbusController::queue_command(const ModbusCommandItem &command) {
+  // check if this commmand is already qeued.
+  // not very effective but the queue is never really large
+  for (auto &item : command_queue_) {
+    if (item->register_address == command.register_address && item->register_count == command.register_count &&
+        item->function_code == command.function_code) {
+      ESP_LOGW(MODBUS_TAG, "Duplicate modbus command found");
+      // update the payload of the queued command
+      // replaces a previous command
+      item->payload = command.payload;
+      return;
+    }
+  }
+  command_queue_.push_back(std::move(make_unique<ModbusCommandItem>(command)));
+}
+
 void ModbusController::update_range(RegisterRange &r) {
   ESP_LOGD(MODBUS_TAG, "Range : %X Size: %x (%d) skip: %d", r.start_address, r.register_count, (int) r.register_type,
            r.skip_updates_counter);
@@ -169,6 +249,42 @@ void ModbusController::update() {
     update_range(r);
   }
   ESP_LOGI(MODBUS_TAG, "Modbus update complete Free Heap  %u bytes", ESP.getFreeHeap());
+}
+
+void ModbusController::add_textsensor(ModbusTextSensor *new_item, ModbusFunctionCode register_type,
+                                      uint16_t start_address, uint8_t offset, uint8_t register_count,
+                                      uint16_t response_bytes, bool hex_encode, uint8_t skip_updates) {
+  new_item->register_type = register_type;
+  new_item->start_address = start_address;
+  new_item->offset = offset;
+  new_item->bitmask = 0xFFFFFFFF;
+  new_item->sensor_value_type = SensorValueType::RAW;
+  new_item->response_bytes_ = response_bytes;
+  new_item->last_value = INT64_MIN;
+  new_item->register_count = register_count;
+  new_item->hex_encode = hex_encode;
+  new_item->skip_updates = skip_updates;
+  auto key = new_item->getkey();
+  sensormap[key] = new_item;
+}
+
+void ModbusController::add_modbus_switch(ModbusSwitch *new_item, ModbusFunctionCode register_type,
+                                         uint16_t start_address, uint8_t offset, uint32_t bitmask) {
+  /*
+    Create a binary-sensor with a flag auto_switch . if true automatically create an assoociated switch object for
+    this address and makes the sensor internal
+    ... or maybe vice versa ?
+
+  */
+
+  new_item->register_type = register_type;
+  new_item->start_address = start_address;
+  new_item->bitmask = bitmask;
+  new_item->offset = offset;
+  new_item->sensor_value_type = SensorValueType::BIT;
+  new_item->last_value = INT64_MIN;
+  new_item->register_count = 1;
+  new_item->skip_updates = 0;
 }
 
 // walk through the sensors and determine the registerranges to read
@@ -253,6 +369,31 @@ size_t ModbusController::create_register_ranges() {
     register_ranges_.push_back(r);
   }
   return register_ranges_.size();
+}
+
+bool ModbusController::remove_register_range(uint16_t start_address) {
+  bool found = false;
+
+  for (auto it = this->register_ranges_.begin(); it != this->register_ranges_.end();) {
+    if (it->start_address == start_address) {
+      // First delete sensors from the map
+      auto first_sensor = sensormap.find(it->first_sensorkey);
+      if (first_sensor != sensormap.end()) {
+        // loop through all sensors with the same start address
+        auto last_sensor = first_sensor;
+        while (last_sensor != sensormap.end() && last_sensor->second->start_address == start_address) {
+          last_sensor++;
+        }
+        sensormap.erase(first_sensor, last_sensor);
+      }
+      // Remove the range itself
+      it = this->register_ranges_.erase(it);
+      found = true;
+    } else {
+      it++;
+    }
+  }
+  return found;
 }
 
 void ModbusController::dump_config() {
