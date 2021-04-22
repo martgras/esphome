@@ -45,16 +45,13 @@ modbus:
   # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
   uart_id: mod_bus
 
-### Note enabling all sensors will probably cause a stackoverflow
-### https://github.com/esphome/issues/issues/855
+
 modbus_controller:
   modbus_id: modbus_epsolar
   command_throttle: 0ms
   id: traceranx
   ## the Modbus device addr
   address: 0x1
-  ## Any modbus registers not already implemented can be defined here
-  ##
   sensors:
     - id: array_rated_voltage
       name: "array_rated_voltage"

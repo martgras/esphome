@@ -2,7 +2,7 @@ from esphome.components import sensor
 import esphome.config_validation as cv
 import esphome.codegen as cg
 
-from esphome.const import CONF_ID, CONF_ADDRESS, CONF_OFFSET
+from esphome.const import CONF_ID, CONF_ADDRESS, CONF_OFFSET, CONF_NAME
 from . import (
     modbus_controller_ns,
     MODBUS_FUNCTION_CODE,
@@ -41,6 +41,7 @@ CONFIG_SCHEMA = sensor.SENSOR_SCHEMA.extend(
 def to_code(config):
     var = cg.new_Pvariable(
         config[CONF_ID],
+        config[CONF_NAME],
         config[CONF_MODBUS_FUNCTIONCODE],
         config[CONF_ADDRESS],
         config[CONF_OFFSET],

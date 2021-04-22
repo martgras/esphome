@@ -11,7 +11,6 @@ from esphome.components import (
 )
 from esphome.core import coroutine
 from esphome.util import Registry
-from esphome.cpp_types import App
 
 from esphome.const import (
     CONF_ID,
@@ -256,7 +255,6 @@ def to_code(config):
             cg.add(
                 var.add_binarysensor(
                     sens,
-                    App,
                     cfg[CONF_MODBUS_FUNCTIONCODE],
                     cfg[CONF_ADDRESS],
                     cfg[CONF_OFFSET],
