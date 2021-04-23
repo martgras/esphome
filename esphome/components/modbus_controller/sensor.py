@@ -54,4 +54,15 @@ def to_code(config):
     yield sensor.register_sensor(var, config)
 
     paren = yield cg.get_variable(config["modbuscomponent_id"])
-    cg.add(var.set_modbus_parent(paren))
+    cg.add(
+        var.add_to_controller(
+            paren,
+            config[CONF_MODBUS_FUNCTIONCODE],
+            config[CONF_ADDRESS],
+            config[CONF_OFFSET],
+            config[CONF_BITMASK],
+            config[CONF_VALUE_TYPE],
+            config[CONF_REGISTER_COUNT],
+            config[CONF_SKIP_UPDATES],
+        )
+    )

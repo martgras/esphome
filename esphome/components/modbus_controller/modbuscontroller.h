@@ -9,6 +9,11 @@
 #include "esphome/components/modbus/modbus.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/automation.h"
+#ifdef USE_MQTT
+#include "esphome/components/mqtt/mqtt_component.h"
+#include "esphome/components/mqtt/mqtt_switch.h"
+#endif
+
 #include <string>
 #include <map>
 #include <memory>
@@ -106,7 +111,6 @@ inline uint64_t qword_from_hex_str(const std::string &value, uint8_t pos) {
 }
 
 std::string get_hex_string(const std::vector<uint8_t> &data);
-
 
 class ModbusController;
 
@@ -206,6 +210,10 @@ class ModbusSensor : public Component, public sensor::Sensor, public SensorItem 
   virtual void log() override;
   std::string const &get_sensorname() override { return this->get_name(); };
 
+  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
+                         uint8_t offset, uint32_t bitmask, SensorValueType value_type, int register_count,
+                         uint8_t skip_updates);
+
  private:
   ModbusController *parent_{nullptr};
 };
@@ -233,6 +241,8 @@ class ModbusSwitch : public Component, public switch_::Switch, public SensorItem
   virtual float parse_and_publish(const std::vector<uint8_t> &data) override;
   virtual void log() override;
   std::string const &get_sensorname() override { return this->get_name(); };
+  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
+                         uint8_t offset, uint32_t bitmask);
   /*
     ModbusFunctionCode register_type;
     uint16_t start_address;
@@ -269,6 +279,9 @@ class ModbusTextSensor : public Component, public text_sensor::TextSensor, publi
   }
   float parse_and_publish(const std::vector<uint8_t> &data) override;
   virtual void log() override;
+  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
+                         uint8_t offset, uint8_t register_count, uint16_t response_bytes, bool hex_encode,
+                         uint8_t skip_updates);
   std::string const &get_sensorname() override { return this->get_name(); };
   void update(){};
   void set_state(bool state) { this->state = state; }
@@ -310,7 +323,8 @@ class ModbusBinarySensor : public Component, public binary_sensor::BinarySensor,
   void update(){};
   void set_state(bool state) { this->state = state; }
   void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
-
+  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
+                         uint8_t offset, uint32_t bitmask, bool create_switch = false, uint8_t skip_updates = 0);
   bool create_switch{false};
 #ifdef USE_MQTT
   std::unique_ptr<mqtt::MQTTSwitchComponent> mqtt_switch;
@@ -351,24 +365,9 @@ struct ModbusCommandItem {
                                                        const std::vector<bool> &values);
 };
 
-// class ModbusSensor ;
 class ModbusController : public PollingComponent, public modbus::ModbusDevice {
  public:
   ModbusController(uint16_t throttle = 0) : PollingComponent(), modbus::ModbusDevice(), command_throttle_(throttle){};
-
-  void add_sensor(ModbusSensor *new_item, ModbusFunctionCode register_type, uint16_t start_address, uint8_t offset,
-                  uint32_t bitmask, SensorValueType value_type = SensorValueType::U_WORD, int register_count = 1,
-                  uint8_t skip_updates = 0) ;
-                  
-  void add_binarysensor(ModbusBinarySensor *new_item, ModbusFunctionCode register_type, uint16_t start_address,
-                        uint8_t offset, uint32_t bitmask, bool create_switch = false, uint8_t skip_updates = 0);
-
-  void add_textsensor(ModbusTextSensor *new_item, ModbusFunctionCode register_type, uint16_t start_address,
-                      uint8_t offset, uint8_t register_count, uint16_t response_bytes, bool hex_encode,
-                      uint8_t skip_updates);
-
-  void add_modbus_switch(ModbusSwitch *new_item, ModbusFunctionCode register_type, uint16_t start_address,
-                         uint8_t offset, uint32_t bitmask);
   size_t create_register_ranges();
 
   bool remove_register_range(uint16_t start_address);
@@ -401,6 +400,7 @@ class ModbusController : public PollingComponent, public modbus::ModbusDevice {
   void set_command_throttle(uint16_t command_throttle) { this->command_throttle_ = command_throttle; }
 
   void queue_command(const ModbusCommandItem &command);
+  void add_sensor_item(SensorItem *item) { sensormap[item->getkey()] = item; }
 
  protected:
   bool send_next_command_();

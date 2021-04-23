@@ -237,8 +237,8 @@ def to_code(config):
         for cfg in conf:
             sens = yield new_sensor(cfg)
             cg.add(
-                var.add_sensor(
-                    sens,
+                sens.add_to_controller(
+                    var,
                     cfg[CONF_MODBUS_FUNCTIONCODE],
                     cfg[CONF_ADDRESS],
                     cfg[CONF_OFFSET],
@@ -253,8 +253,8 @@ def to_code(config):
         for cfg in conf:
             sens = yield new_binary_sensor(cfg)
             cg.add(
-                var.add_binarysensor(
-                    sens,
+                sens.add_to_controller(
+                    var,
                     cfg[CONF_MODBUS_FUNCTIONCODE],
                     cfg[CONF_ADDRESS],
                     cfg[CONF_OFFSET],
@@ -272,8 +272,8 @@ def to_code(config):
         for cfg in conf:
             sens = yield new_text_sensor(cfg)
             cg.add(
-                var.add_textsensor(
-                    sens,
+                sens.add_to_controller(
+                    var,
                     cfg[CONF_MODBUS_FUNCTIONCODE],
                     cfg[CONF_ADDRESS],
                     cfg[CONF_OFFSET],
@@ -293,8 +293,8 @@ def to_code(config):
         for cfg in conf:
             sens = yield new_modbus_switch(cfg)
             cg.add(
-                var.add_modbus_switch(
-                    sens,
+                sens.add_to_controller(
+                    var,
                     cfg[CONF_MODBUS_FUNCTIONCODE],
                     cfg[CONF_ADDRESS],
                     cfg[CONF_OFFSET],
