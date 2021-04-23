@@ -53,3 +53,15 @@ def to_code(config):
 
     paren = yield cg.get_variable(config["modbuscomponent_id"])
     cg.add(var.set_modbus_parent(paren))
+    cg.add(
+        var.add_to_controller(
+            paren,
+            config[CONF_MODBUS_FUNCTIONCODE],
+            config[CONF_ADDRESS],
+            config[CONF_OFFSET],
+            config[CONF_REGISTER_COUNT],
+            config[CONF_RESPONSE_SIZE],
+            config[CONF_HEX_ENCODE],
+            config[CONF_SKIP_UPDATES],
+        )
+    )
