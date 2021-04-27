@@ -27,8 +27,6 @@ modbus:
   # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
   uart_id: mod_bus
 
-### Note enabling all sensors will probably cause a stackoverflow
-### https://github.com/esphome/issues/issues/855
 sensor:
   - platform: modbus_controller
     modbus_id: modbus_epsolar
@@ -52,8 +50,6 @@ modbus:
   # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
   uart_id: mod_bus
 
-### Note enabling all sensors will probably cause a stackoverflow
-### https://github.com/esphome/issues/issues/855
 modbus_controller:
   modbus_id: modbus_epsolar
   command_throttle: 0ms
@@ -138,11 +134,8 @@ esphome <path to your config.yaml> run
 ```
 
 
-[Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_controller/esphome/components/modbus_controller/testconfig/epever.yaml)
+[Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/testconfig/epever.yaml)
 
-
-## Current status
-Note: due to limited stack size the device might crash if all registers are enabled See https://github.com/esphome/issues/issues/855
 
 ### Format
 
