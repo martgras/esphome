@@ -128,7 +128,7 @@ struct SensorItem {
   uint8_t skip_updates;
   SensorValueType sensor_value_type;
 
-  int64_t last_value;
+  int64_t last_value { INT64_MIN};
 
   virtual std::string const &get_sensorname() = 0;
   virtual void log() = 0;
