@@ -24,8 +24,6 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char *MODBUS_TAG = "ModbusController";
-
 class ModbusController;
 
 enum class ModbusFunctionCode {
@@ -112,6 +110,30 @@ inline uint64_t qword_from_hex_str(const std::string &value, uint8_t pos) {
 
 std::string get_hex_string(const std::vector<uint8_t> &data);
 
+// Extract data from modbus response buffer
+template<typename T> T get_data(const std::vector<uint8_t> &data, size_t offset) {
+  if (sizeof(T) == sizeof(uint8_t)) {
+    return T(data[offset]);
+  }
+  if (sizeof(T) == sizeof(uint16_t)) {
+    return T((uint16_t(data[offset + 0]) << 8) | (uint16_t(data[offset + 1]) << 0));
+  }
+
+  if (sizeof(T) == sizeof(uint32_t)) {
+    return get_data<uint16_t>(data, offset) << 16 | get_data<uint16_t>(data, (offset + 2));
+  }
+
+  if (sizeof(T) == sizeof(uint64_t)) {
+    return static_cast<uint64_t>(get_data<uint32_t>(data, offset)) << 32 |
+           (static_cast<uint64_t>(get_data<uint32_t>(data, offset + 4)));
+  }
+}
+
+inline bool coil_from_vector(int coil, const std::vector<uint8_t> &data) {
+  auto data_byte = coil / 8;
+  return (data[data_byte] & (1 << (coil % 8))) > 0;
+}
+
 class ModbusController;
 
 struct RawData {
@@ -128,7 +150,7 @@ struct SensorItem {
   uint8_t skip_updates;
   SensorValueType sensor_value_type;
 
-  int64_t last_value { INT64_MIN};
+  int64_t last_value{INT64_MIN};
 
   virtual std::string const &get_sensorname() = 0;
   virtual void log() = 0;
@@ -182,157 +204,6 @@ struct SensorItem {
     }
     return size;
   }
-};
-
-class ModbusSensor : public Component, public sensor::Sensor, public SensorItem {
- public:
-  ModbusSensor(const std::string &name)
-      : Component(),
-        sensor::Sensor(name){
-
-        };
-  ModbusSensor(const std::string &name, ModbusFunctionCode register_type, uint16_t start_address, uint8_t offset,
-               uint32_t bitmask, SensorValueType value_type = SensorValueType::U_WORD, int register_count = 1,
-               uint8_t skip_updates = 0)
-      : Component(), sensor::Sensor(name) {
-    this->register_type = register_type;
-    this->start_address = start_address;
-    this->offset = offset;
-    this->bitmask = bitmask, this->sensor_value_type = value_type;
-    this->register_count = register_count;
-    this->skip_updates = skip_updates;
-  }
-
-  void update(){};
-  void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
-  float parse_and_publish(const std::vector<uint8_t> &data) override;
-
-  virtual void log() override;
-  std::string const &get_sensorname() override { return this->get_name(); };
-
-  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
-                         uint8_t offset, uint32_t bitmask, SensorValueType value_type, int register_count,
-                         uint8_t skip_updates);
-
- private:
-  ModbusController *parent_{nullptr};
-};
-
-class ModbusSwitch : public Component, public switch_::Switch, public SensorItem {
- public:
-  ModbusSwitch(ModbusFunctionCode register_type, uint16_t address, uint8_t offset, uint32_t bitmask)
-      : Component(), switch_::Switch() {
-    this->register_type = register_type;
-    this->start_address = address;
-    this->offset = offset;
-    this->bitmask = bitmask;
-  };
-  void setup() override {
-    if (connected_sensor_) {
-      this->set_name(connected_sensor_->get_name());
-    }
-  }
-  void write_state(bool state) override;
-  void set_state(bool state) { this->state = state; }
-  void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
-  void set_connected_sensor(binary_sensor::BinarySensor *connected_sensor) {
-    this->connected_sensor_ = connected_sensor;
-  }
-  virtual float parse_and_publish(const std::vector<uint8_t> &data) override;
-  virtual void log() override;
-  std::string const &get_sensorname() override { return this->get_name(); };
-  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
-                         uint8_t offset, uint32_t bitmask);
-  /*
-    ModbusFunctionCode register_type;
-    uint16_t start_address;
-    uint8_t offset;
-    uint32_t bitmask;
-  */
- private:
-  binary_sensor::BinarySensor *connected_sensor_{nullptr};
-  ModbusController *parent_{nullptr};
-};
-
-class ModbusTextSensor : public Component, public text_sensor::TextSensor, public SensorItem {
- public:
-  ModbusTextSensor(const std::string &name, ModbusFunctionCode register_type, uint16_t address, uint8_t offset,
-                   uint8_t register_count, uint16_t response_bytes, bool hex_encode, uint8_t skip_updates)
-      : Component(), text_sensor::TextSensor(name) {
-    this->register_type = register_type;
-    this->start_address = start_address;
-    this->offset = offset;
-
-    this->register_type = register_type;
-    this->start_address = start_address;
-    this->offset = offset;
-    this->response_bytes_ = response_bytes;
-    this->register_count = register_count;
-    this->hex_encode = hex_encode;
-    this->skip_updates = skip_updates;
-  };
-
-  ModbusTextSensor(const std::string &name) : text_sensor::TextSensor(name) {}
-  ModbusTextSensor(ModbusFunctionCode register_type, uint16_t address, uint8_t offset, uint8_t register_count,
-                   uint16_t response_bytes, bool hex_encode, uint8_t skip_updates)
-      : ModbusTextSensor("", register_type, address, offset, register_count, response_bytes, hex_encode, skip_updates) {
-  }
-  float parse_and_publish(const std::vector<uint8_t> &data) override;
-  virtual void log() override;
-  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
-                         uint8_t offset, uint8_t register_count, uint16_t response_bytes, bool hex_encode,
-                         uint8_t skip_updates);
-  std::string const &get_sensorname() override { return this->get_name(); };
-  void update(){};
-  void set_state(bool state) { this->state = state; }
-  void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
-  uint16_t response_bytes_;
-  bool hex_encode;
-
- private:
-  ModbusController *parent_{nullptr};
-};
-
-/*
-        config[CONF_NAME],
-        cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
-        cv.Optional(CONF_ADDRESS): cv.int_,
-        cv.Optional(CONF_OFFSET): cv.int_,
-        cv.Optional(CONF_BITMASK, default=0x1): cv.hex_uint32_t,
-        cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
-        cv.Optional(CONF_CREATE_SWITCH, default=False): cv.boolean,
-
-*/
-
-class ModbusBinarySensor : public Component, public binary_sensor::BinarySensor, public SensorItem {
- public:
-  ModbusBinarySensor(const std::string &name) : binary_sensor::BinarySensor(name) {}
-  ModbusBinarySensor(const std::string &name, ModbusFunctionCode register_type, uint16_t start_address, uint8_t offset,
-                     uint32_t bitmask, uint8_t skip_updates = 0, bool create_switch = false)
-      : Component(), binary_sensor::BinarySensor(name) {
-    this->register_type = register_type;
-    this->start_address = start_address;
-    this->offset = offset;
-    this->bitmask = bitmask, this->sensor_value_type = SensorValueType::BIT;
-    this->skip_updates = skip_updates;
-    this->create_switch = create_switch;
-  }
-  virtual float parse_and_publish(const std::vector<uint8_t> &data) override;
-  std::string const &get_sensorname() override { return this->get_name(); };
-  virtual void log() override;
-  void update(){};
-  void set_state(bool state) { this->state = state; }
-  void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
-  void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
-                         uint8_t offset, uint32_t bitmask, bool create_switch = false, uint8_t skip_updates = 0);
-  bool create_switch{false};
-#ifdef USE_MQTT
-  std::unique_ptr<mqtt::MQTTSwitchComponent> mqtt_switch;
-#endif
-  std::unique_ptr<ModbusSwitch> modbus_switch;
-
- private:
-  ModbusController *parent_{nullptr};
 };
 
 struct ModbusCommandItem {
@@ -417,24 +288,6 @@ class ModbusController : public PollingComponent, public modbus::ModbusDevice {
 
   friend class RawDataCodeTrigger;
   friend class ModbusSwitch;
-};
-
-class RawDataCodeTrigger : public Trigger<RawData> {
- public:
-  explicit RawDataCodeTrigger(ModbusController *parent, text_sensor::TextSensor *sensor) {
-    auto id = sensor->get_object_id_hash();
-    for (auto &item : parent->sensormap) {
-      // if (id == item.second->get_sensor()->get_object_id_hash())
-      {
-        // return item.second.get();
-        item.second->add_on_raw_data_received_callback([this](RawData data) {
-          ESP_LOGI(MODBUS_TAG, "ON RAW");
-          this->trigger(data);
-        });
-        break;
-      }
-    }
-  }
 };
 
 }  // namespace modbus_controller
