@@ -122,7 +122,7 @@ The pins used on the ESP32 side can be changed there is no special reason I chos
 
 ```
 # Clone repo
-git clone https://github.com/martgras/esphome.git -b modbus_controller
+git clone https://github.com/martgras/esphome.git -b modbus_component
 
 # Install ESPHome
 cd esphome/
