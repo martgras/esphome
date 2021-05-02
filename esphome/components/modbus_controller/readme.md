@@ -148,7 +148,7 @@ Define an register in YAML
         bitmask: default value is 0xFFFFF # some values are packed in a single response word. Bitmask can be used to extract the relevant parts
         name: 'Length of night'
         modbus_functioncode: read_holding_registers
-        value_type: U_SINGLE
+        value_type: U_WORD
         scale_factor: 1.0
 ```
 
@@ -159,12 +159,18 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
   - address: start address of the first register in a range
   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. The component calculates the size of the range based on offset and size of the value type
   - value_type:
-    - U_SINGLE (unsigned float from 1 register =16bit
-    - S_SINGLE (signed float from one register)
-    - U_DOUBLE (unsigned float from 2 registers = 32bit
-    - S_DOUBLE
-  - scale factor:  most values are returned as 16 bit integer values. To get the actual value the raw value is usually divided by 100.
-  For example, if the raw data returned for input voltage is 1350 the actual valus is 13.5 (V). The scale_factor parameter is used for the conversion
+    - U_WORD (unsigned float from 1 register =16bit
+    - S_WORD (signed float from one register)
+    - U_DWORD (unsigned float from 2 registers = 32bit)
+    - S_DWORD (unsigned float from 2 registers = 32bit)
+    - U_DWORD_R (unsigend float from 2 registers low word first )
+    - S_DWORD_R (sigend float from 2 registers low word first )    
+    - U_QWORD (unsigned float from 4 registers = 64bit
+    - S_QWORD (signed float from 4 registers = 64bit
+    - U_QWORD_R (unsigend float from 4 registers low word first )
+    - S_QWORD_R (sigend float from 4 registers low word first )    
+
+
 #### modbus component:
 
 
