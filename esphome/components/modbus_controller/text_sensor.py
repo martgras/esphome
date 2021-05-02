@@ -26,9 +26,9 @@ CONFIG_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusTextSensor),
         cv.Required(CONF_MODBUSCOMPONENT_ID): cv.use_id("Modbus"),
-        cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
-        cv.Optional(CONF_ADDRESS): cv.int_,
-        cv.Optional(CONF_OFFSET): cv.int_,
+        cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
+        cv.Required(CONF_ADDRESS): cv.int_,
+        cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_RESPONSE_SIZE, default=0): cv.int_,
         cv.Optional(CONF_HEX_ENCODE, default="true"): cv.boolean,

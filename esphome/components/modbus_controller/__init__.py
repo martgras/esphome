@@ -108,11 +108,11 @@ validate_modbus_range = cv.validate_registry("sensors", MODBUS_REGISTRY)
 sensor_entry = core_sensor.SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSensor),
-        cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
-        cv.Optional(CONF_ADDRESS): cv.int_,
-        cv.Optional(CONF_OFFSET): cv.int_,
+        cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
+        cv.Required(CONF_ADDRESS): cv.int_,
+        cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_BITMASK, default=0xFFFFFFFF): cv.hex_uint32_t,
-        cv.Optional(CONF_VALUE_TYPE): cv.enum(SENSOR_VALUE_TYPE),
+        cv.Optional(CONF_VALUE_TYPE, default="U_WORD"): cv.enum(SENSOR_VALUE_TYPE),
         cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
     }
@@ -125,9 +125,9 @@ sensor_entry = core_sensor.SENSOR_SCHEMA.extend(
 binary_sensor_entry = core_binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusBinarySensor),
-        cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
-        cv.Optional(CONF_ADDRESS): cv.int_,
-        cv.Optional(CONF_OFFSET): cv.int_,
+        cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
+        cv.Required(CONF_ADDRESS): cv.int_,
+        cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_BITMASK, default=0x1): cv.hex_uint32_t,
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
         cv.Optional(CONF_CREATE_SWITCH, default=False): cv.boolean,
@@ -137,8 +137,8 @@ binary_sensor_entry = core_binary_sensor.BINARY_SENSOR_SCHEMA.extend(
 modbus_switch_entry = core_switch.SWITCH_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSwitch),
-        cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
-        cv.Optional(CONF_ADDRESS): cv.int_,
+        cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
+        cv.Required(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_BITMASK, default=0x1): cv.hex_uint32_t,
     }
@@ -152,9 +152,9 @@ text_sensor_entry = core_text_sensor.TEXT_SENSOR_SCHEMA.extend(
                 cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(RawDataCodeTrigger),
             }
         ),
-        cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
-        cv.Optional(CONF_ADDRESS): cv.int_,
-        cv.Optional(CONF_OFFSET): cv.int_,
+        cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
+        cv.Required(CONF_ADDRESS): cv.int_,
+        cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_RESPONSE_SIZE, default=0): cv.int_,
         cv.Optional(CONF_HEX_ENCODE, default=0): cv.boolean,

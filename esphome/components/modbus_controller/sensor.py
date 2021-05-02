@@ -27,11 +27,11 @@ CONFIG_SCHEMA = sensor.SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSensor),
         cv.Required(CONF_MODBUSCOMPONENT_ID): cv.use_id("Modbus"),
-        cv.Optional(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
-        cv.Optional(CONF_ADDRESS): cv.int_,
-        cv.Optional(CONF_OFFSET): cv.int_,
+        cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
+        cv.Required(CONF_ADDRESS): cv.int_,
+        cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_BITMASK, default=0xFFFFFFFF): cv.hex_uint32_t,
-        cv.Optional(CONF_VALUE_TYPE): cv.enum(SENSOR_VALUE_TYPE),
+        cv.Optional(CONF_VALUE_TYPE, default="U_WORD"): cv.enum(SENSOR_VALUE_TYPE),
         cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
     }
