@@ -40,8 +40,10 @@ void ModbusController::setup() { this->create_register_ranges(); }
  Once the response has been processed it is removed from the queue and the next command is sent
 */
 bool ModbusController::send_next_command_() {
-  uint32_t command_delay = millis() - this->last_command_timestamp_;
-
+  uint32_t command_delay = abs(millis() - this->last_command_timestamp_);
+  if (sending_) {
+    ESP_LOGE(TAG, "send in progress");
+  }
   if (!sending_ && (command_delay > this->command_throttle_) && (!command_queue_.empty())) {
     this->sending_ = true;
     auto &command = command_queue_.front();
@@ -55,6 +57,7 @@ bool ModbusController::send_next_command_() {
   } else {
     yield();
   }
+  this->sending_ = false;
   return (!command_queue_.empty());
 }
 
@@ -65,8 +68,9 @@ void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
     ESP_LOGD(TAG, "Dispatch to handler 0x%X", current_command->register_address);
-    current_command->on_data_func(current_command->function_code, current_command->register_address, data);
     this->sending_ = false;
+    current_command->on_data_func(current_command->function_code, current_command->register_address, data);
+
     command_queue_.pop_front();
   }
 }
