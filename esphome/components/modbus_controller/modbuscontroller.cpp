@@ -287,7 +287,7 @@ void ModbusController::dump_config() {
   create_register_ranges();
 }
 
-void ModbusController::loop() { send_next_command_() }
+void ModbusController::loop() { send_next_command_(); }
 
 void ModbusController::on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address,
                                                   const std::vector<uint8_t> &data) {
