@@ -40,24 +40,19 @@ void ModbusController::setup() { this->create_register_ranges(); }
  Once the response has been processed it is removed from the queue and the next command is sent
 */
 bool ModbusController::send_next_command_() {
-  uint32_t command_delay = abs(millis() - this->last_command_timestamp_);
-  if (sending_) {
-    ESP_LOGE(TAG, "send in progress");
-  }
-  if (!sending_ && (command_delay > this->command_throttle_) && (!command_queue_.empty())) {
+  uint32_t command_delay = millis() - this->last_command_timestamp_;
+  if (!sending_ && (command_delay > this->command_throttle_) && !command_queue_.empty()) {
     this->sending_ = true;
     auto &command = command_queue_.front();
     ESP_LOGD(TAG, "Sending next modbus command %u %u", command_delay, this->command_throttle_);
     command->send();
+    delay(2);
     this->last_command_timestamp_ = millis();
     if (!command->on_data_func) {  // No handler remove from queue directly after sending
       command_queue_.pop_front();
       this->sending_ = false;
     }
-  } else {
-    yield();
   }
-  this->sending_ = false;
   return (!command_queue_.empty());
 }
 
@@ -144,7 +139,6 @@ void ModbusController::update_range(RegisterRange &r) {
     ModbusCommandItem command_item =
         ModbusCommandItem::create_read_command(this, r.register_type, r.start_address, r.register_count);
     queue_command(command_item);
-    yield();
     r.skip_updates_counter = r.skip_updates;  // reset counter to config value
   } else {
     r.skip_updates_counter--;
@@ -293,7 +287,7 @@ void ModbusController::dump_config() {
   create_register_ranges();
 }
 
-void ModbusController::loop() { send_next_command_(); }
+void ModbusController::loop() { send_next_command_() }
 
 void ModbusController::on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address,
                                                   const std::vector<uint8_t> &data) {
