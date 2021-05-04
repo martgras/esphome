@@ -156,7 +156,7 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
   - bitmask: some values are packed in a response. The bitmask can be used to extract a value from the response.  For example, the high byte value register 0x9013 contains the minute value of the current time. To only extract this value use bitmask: 0xFF00.  The result will be automatically right shifted by the number of 0 before the first 1 in the bitmask.  For 0xFF00 (0b1111111100000000) the result is shifted 8 positions.  More than one sensor can use the same address/offset if the bitmask is different.
 
-### binarysensor
+#### binarysensor
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
@@ -274,4 +274,136 @@ If they differ the time of the esp is sent to the EPEVER controller.
 ````
 
 
+## Protocol decoding example ## 
 
+
+````
+  sensors:
+    - id: array_rated_voltage
+      name: "array_rated_voltage"
+      address: 0x3000
+      offset: 0
+      unit_of_measurement: "V"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+      skip_updates: 60
+      filters:
+        - multiply: 0.01
+
+    - id: array_rated_current
+      name: "array_rated_current"
+      address: 0x3000
+      offset: 2
+      unit_of_measurement: "V"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 2
+      filters:
+        - multiply: 0.01
+
+    - id: array_rated_power
+      name: "array_rated_power"
+      address: 0x3000
+      register_count: 2
+      offset: 4
+      unit_of_measurement: "W"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_DWORD_R
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.01
+
+    - id: battery_rated_voltage
+      name: "battery_rated_voltage"
+      address: 0x3000
+      offset: 8
+      unit_of_measurement: "V"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.01
+
+    - id: battery_rated_current
+      name: "battery_rated_current"
+      address: 0x3000
+      offset: 10
+      unit_of_measurement: "A"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.01
+
+    - id: battery_rated_power
+      name: "battery_rated_power"
+      address: 0x3000
+      register_count: 2
+      offset: 12
+      unit_of_measurement: "W"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_DWORD_R
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.01
+
+    - id: charging_mode
+      name: "charging_mode"
+      address: 0x3000
+      offset: 16
+      unit_of_measurement: ""
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 0
+````
+
+To minimize the required transactions all registers with the same base address are read in one request. 
+The response is mapped to the sensor based on register_count and offset in bytes. 
+
+Request
+````
+0x1  (01)  : slave address
+0x4  (04)  : function code 4 (Read Input Registers)
+0x30 (48)  : start address high byte
+0x0  (00)  : start address low byte
+0x0  (00)  : number of registers to read (hi)
+0x9  (09)  : number of registers to read (low)
+0x3f (63)  : crc
+0xc  (12)  : crc
+````
+
+Response:
+````
+H   0x1  (01)  : slave address
+H   0x4  (04)  : function code
+H   0x12 (18)  : byte count
+---------------------------
+0   0x27 (39)  : array_rated_voltage - hi
+1   0x10 (16)  : array_rated_voltage - lo  => 0x2710 = 100000 - multiply: 0.01 = 100V
+---------------------------
+2   0x7  (7)   : next value is at offset 2 : array_rated_current - hi
+3   0xd0 (208) : array_rated_current - lo  => 0x7d0 = 2000 - multiply: 0.01 = 20A
+---------------------------
+4   0xcb (203) : array_rated_power is a 32 bit value that spans 2 registers. high byte of low word
+5   0x20 (32)  : low byte of low word
+6   0x0  (0)   : high byte of high word
+7   0x0  (0)   : low byte of low word => 0x0000CB20 = 52000 - multiply: 0.01 = 520W. Because the low word is sent first the data type is U_DWORD_R
+---------------------------
+8   0x9  (09)  : battery_rated_voltage hi
+9   0x60 (96)  : battery_rated_voltage lo 0x960 = 2400- multiply: 0.01 = 12V
+---------------------------
+10  0x7  (07)  : battery_rated_current hi
+11  0xd0 (208) : battery_rated_current lo = 2000 - multiply: 0.01 = 20A
+---------------------------
+12  0xcb (203) : battery_rated_power is a 32 bit value that spans 2 registers. high byte of low word
+13  0x20 (32)  : low byte of low word
+14  0x0  (0)   : high byte of high word
+15  0x0  (0)   : low byte of low word => 0x0000CB20 = 52000 - multiply: 0.01 = 520W. Because the low word is sent first the data type is U_DWORD_R
+---------------------------
+16  0x0  (0)   : charging_mode high word
+17  0x2  (02)  : charging_mode low word 0x2 (MPPT)
+---------------------------
+C   0x2f (47)  : crc
+C   0x31 (49)  : crc
+````
