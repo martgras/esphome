@@ -70,7 +70,7 @@ float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
 
   result = float(value);
   // No need tp publish if the value didn't change since the last publish
-  if (value != this->last_value) {
+  if (value != this->last_value ||  this->has_state_ == false ) {
     this->publish_state(value != 0.0);
     this->last_value = value;
     // Update the state of the connected switch

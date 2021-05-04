@@ -105,7 +105,7 @@ float ModbusSensor::parse_and_publish(const std::vector<uint8_t> &data) {
   // No need to publish if the value didn't change since the last publish
   // can reduce mqtt traffic considerably if many sensors are used
   ESP_LOGVV(TAG, " SENSOR : new: %lld  old: %lld ", value, this->last_value);
-  if (value != this->last_value || this->get_force_update()) {
+  if (value != this->last_value || this->get_force_update() || this->has_state_ == false) {
     // this->sensor_->raw_state = result;
     this->publish_state(result);
     this->last_value = value;
