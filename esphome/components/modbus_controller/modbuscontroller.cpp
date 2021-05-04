@@ -40,11 +40,15 @@ void ModbusController::setup() { this->create_register_ranges(); }
  Once the response has been processed it is removed from the queue and the next command is sent
 */
 bool ModbusController::send_next_command_() {
-  uint32_t command_delay = millis() - this->last_command_timestamp_;
-  if (!sending_ && (command_delay > this->command_throttle_) && !command_queue_.empty()) {
+  uint32_t last_send = millis() - this->last_command_timestamp_;
+
+  if (sending_ && last_send > 500) {
+    sending_ = false; // Clear send flag afer 0.5s 
+  }
+  if (!sending_ && (last_send > this->command_throttle_) && !command_queue_.empty()) {
     this->sending_ = true;
     auto &command = command_queue_.front();
-    ESP_LOGD(TAG, "Sending next modbus command %u %u", command_delay, this->command_throttle_);
+    ESP_LOGD(TAG, "Sending next modbus command %u %u", last_send, this->command_throttle_);
     command->send();
     delay(2);
     this->last_command_timestamp_ = millis();

@@ -1,48 +1,51 @@
-# EPEVER Solar charge controller component
+# Modbus controller component
 
-## A fork of [esphome](https://github.com/esphome/esphome) adding support for montitoring a EPEVER controller
+## A fork of [esphome](https://github.com/esphome/esphome) adding support for monitoring  modbus slave
 
 Initially I created this component only for the EPEVER Trace solar controller (You can find that implementation in the epever branch here. )
 Since alot of my code was already pretty generic I decided to create a general modbus component instead.
 
-Currently Sensors, Binary Sensors, Text Sensors and binary switches are support.
-Custom command can be sent to the slave using lambdas
+Modbus_controller suppors sensors, binary_sensors, text_sensors and switches
+Custom command can be sent to the slave using lambdas.
 
 
 Tested using an EPEVER Tracer2210AN MPPT controller and PZEM-017 
 
 
 
-## Note - breaking change ##
 
-With the commit from April 22th the code was refactored to better align with other esphome components
-Changes: 
-- renamed the componened from modbus_component to modbus_controller
+## Hardware setup
 
-- previously a somewhat odd yaml structure was used where modbus_component was defined as a sensor itself 
+I'm using a cheap RS 485 module connected to an ESP32
 
-````
-modbus:
-  id: modbus_epsolar
-  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
-  uart_id: mod_bus
+![RS 485 Modul](https://i.stack.imgur.com/plH1X.jpg)
 
-sensor:
-  - platform: modbus_controller
-    modbus_id: modbus_epsolar
-    command_throttle: 0ms
-    id: traceranx
-    ## the Modbus device addr
-    address: 0x1
-    ## Any modbus registers not already implemented can be defined here
-    ##
-    sensors:
-      - id: array_rated_voltage
-        name: "array_rated_voltage"
-        address: 0x3000
-````
+See [How is this RS485 Module Working?](https://electronics.stackexchange.com/questions/244425/how-is-this-rs485-module-working) on stackexchange for more details
 
-this has now changed to 
+To connect the RS 485 Module to the controller I cut off one side of an ethernet cable and connected PIN 3 (or 4)  to A+, PIN 5 (or 6) to B+ and 7 (or 8 to Ground).  Ground is also connected to GND.
+The interface with ESP32 is GPIO PIN 25 to TXD PIN 27 to RXD . 3.3V to VCC and GND to GND.
+The pins used on the ESP32 side can be changed there is no special reason I chose 25/27 except that most of my ESP32 boards have them available
+
+## Software setup
+
+```
+# Clone repo
+git clone https://github.com/martgras/esphome.git -b modbus_component
+
+# Install ESPHome
+cd esphome/
+pip3 install -r requirements.txt -r requirements_test.txt
+pip3 install -e .
+
+esphome <path to your config.yaml> run
+
+```
+
+
+Modbus sensors can be directly defined (inline) under the modbus_controller hub or as standalone components
+
+Technically there is no difference between the "inline" and the standard definitions approach.
+Because the project started supporting only "inline" I'm keeping it in the code because it doesn't impact the code size and is a bit more convenient. The additional work to support both schemata is done in the python scripts generating the C++ code 
 
 ````
 modbus:
@@ -72,7 +75,8 @@ modbus_controller:
       - multiply: 0.01
 ````
 
-- modbus sensors can be directly defined (inline) with the modbus_controller component or using the "default" esphome schema :
+
+or define modbus_controller hub and sensors seperately
 
 ````
 modbus_controller:
@@ -97,41 +101,6 @@ sensors:
     - multiply: 0.01
 ````
 
-While the "inline" variant is a slight derivation from the esphome standards it helps to keep all definitons together and saves you from repeating the platfrom line for every sensor. 
-Technically there is no difference between the "inline" and the standard definions approach.
-Because the project started supporting only "inline" I'm keeping it in the code because it doesn't impact the code size and is a bit more convient. The additional work to support boths schemata is done in the python scripts generating the C++ code 
-
-
-
-
-
-
-## Hardware setup
-
-I'm using a cheap RS 485 module connected to an ESP32
-
-![RS 485 Modul](https://i.stack.imgur.com/plH1X.jpg)
-
-See [How is this RS485 Module Working?](https://electronics.stackexchange.com/questions/244425/how-is-this-rs485-module-working) on stackexchange for more details
-
-To connect the RS 485 Module to the conntroller I cut off one side of an ethernet cable and connected PIN 3 (or 4)  to A+, PIN 5 (or 6) to B+ and 7 (or 8 to Ground).  Ground is also connected to GND.
-The interface with ESP32 is GPIO PIN 25 to TXD PIN 27 to RXD . 3.3V to VCC and GND to GND.
-The pins used on the ESP32 side can be changed there is no special reason I chose 25/27 except that most of my ESP32 boards have them available
-
-## Software setup
-
-```
-# Clone repo
-git clone https://github.com/martgras/esphome.git -b modbus_component
-
-# Install ESPHome
-cd esphome/
-pip3 install -r requirements.txt -r requirements_test.txt
-pip3 install -e .
-
-esphome <path to your config.yaml> run
-
-```
 
 
 [Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/testconfig/epever.yaml)
@@ -185,14 +154,14 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
-  - bitmask: some values are packed in a response. The bitmask can be used to extract a value from the response.  For example, the high byte value register 0x9013 contains the minute value of the current time. To only exctract this value use bitmask: 0xFF00.  The result will be automatically right shifted by the number of 0 before the first 1 in the bitmask.  For 0xFF00 (0b1111111100000000) the result is shifted 8 posistions.  More than one sensor can use the same address/offset if the bitmask is different.
+  - bitmask: some values are packed in a response. The bitmask can be used to extract a value from the response.  For example, the high byte value register 0x9013 contains the minute value of the current time. To only extract this value use bitmask: 0xFF00.  The result will be automatically right shifted by the number of 0 before the first 1 in the bitmask.  For 0xFF00 (0b1111111100000000) the result is shifted 8 positions.  More than one sensor can use the same address/offset if the bitmask is different.
 
 ### binarysensor
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
   - bitmask: some values are packed in a response. The bitmask is used to determined if the result is true or false
-  - create_switch: if this is a coil register setting this to true dynamically creates a switch coponent with the same name and sets the binarysensor to internal. Whenever the sensor reads a new value the state is synced with the switch component and vice versa (something like a binarysensorswitch)
+  - create_switch: if this is a coil register setting this to true dynamically creates a modbus_switch component with the same name and sets the binarysensor to internal. Whenever the sensor reads a new value the state is synced with the switch component and vice versa (something like a binarysensorswitch)
   It is a shortcut for archiving this: 
 
   ````yaml
@@ -229,9 +198,9 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
    - address: start address of the first register in a range
    - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
    - response_size: response number of bytes of the response
-   - hex_encode: true | false     If the response is binary data it can't be published. Since a text sensor only publishes strings the hex_encode option encodes binary data as 2 byte hex string. 0x71 will be sent as "71". This allows you to proces the data in a on_value lambda. See the example below how to convert the binary time data to a string and also how to set the time of the controller 
+   - hex_encode: true | false     If the response is binary data it can't be published. Since a text sensor only publishes strings the hex_encode option encodes binary data as 2 byte hex string. 0x71 will be sent as "71". This allows you to process the data in a on_value lambda. See the example below how to convert the binary time data to a string and also how to set the time of the controller 
    - register_count: The number of registers this data point spans. Default is 1 
-   - bitmask: some values are packed in a single response word. bitmask is used to convert to a bool value. For example, bit 8 of the register 0x3200 indicates an battery error. Therefore, the bitmask is 256.  The operation is `result = (raw value & bitmask != 0)`. More than one sensor can use the same address/offset if the bitmask is different
+   - bitmask: some values are packed in a single response word. bitmask is used to convert to a bool value. For example, bit 8 of the register 0x3200 indicates an battery error. Therefore, if the bitmask is 256. the operation is `result = (raw value & bitmask != 0)`. More than one sensor can use the same address/offset if the bitmask is different
    
 #### switch
   - modbus_functioncode: type of register
@@ -241,7 +210,7 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
 See the MODBUS Specification: https://www.developpez.net/forums/attachments/p196506d1451307310/systemes/autres-systemes/automation/probleme-com-modbus-pl7-pro/controllerprotocolv2.3.pdf/ for details about the registers
 
 ## TIP
-Write support using switch / output controls is not implemented yet. 
+Write support is only implemented for switches.
 However the C++ code already has the required methods to write to a modbus register
 
 These methods can be called from a lambda. 
