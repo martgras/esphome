@@ -11,7 +11,7 @@ class ModbusBinarySensor : public Component, public binary_sensor::BinarySensor,
  public:
   ModbusBinarySensor(const std::string &name) : binary_sensor::BinarySensor(name) {}
   ModbusBinarySensor(const std::string &name, ModbusFunctionCode register_type, uint16_t start_address, uint8_t offset,
-                     uint32_t bitmask, uint8_t skip_updates = 0, bool create_switch = false)
+                     uint32_t bitmask, bool create_switch = false, uint8_t skip_updates = 0)
       : Component(), binary_sensor::BinarySensor(name) {
     this->register_type = register_type;
     this->start_address = start_address;

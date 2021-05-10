@@ -264,6 +264,7 @@ class ModbusController : public PollingComponent, public modbus::ModbusDevice {
   void loop() override;
   void on_modbus_data(const std::vector<uint8_t> &data) override;
   void on_modbus_error(uint8_t function_code, uint8_t exception_code) override;
+  void process_modbus_data(const ModbusCommandItem *response);
 
   void dump_config() override;
   void on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address,
@@ -283,6 +284,7 @@ class ModbusController : public PollingComponent, public modbus::ModbusDevice {
   std::vector<RegisterRange> register_ranges_;
   // Hold the pending requests to be sent
   std::list<std::unique_ptr<ModbusCommandItem>> command_queue_;
+  std::queue<std::unique_ptr<ModbusCommandItem>> incoming_queue_;
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
   static std::atomic_bool sending_;

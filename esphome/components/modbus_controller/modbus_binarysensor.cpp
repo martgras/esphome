@@ -23,13 +23,12 @@ void ModbusBinarySensor::add_to_controller(ModbusController *master, ModbusFunct
     this->register_count = 1;
 
   this->skip_updates = skip_updates;
-  auto key = this->getkey();
 
   // If this is coil with read/write we can created a switch item on the fly
   // if create_switch is true then the binary_sensor will be changed to internal and a switch with the same name is
   // created when the binary_sensor value is updated the change will be synced to the switch item and vice versa
   if (create_switch && (register_type == ModbusFunctionCode::READ_COILS)) {
-    auto new_switch = make_unique<ModbusSwitch>(ModbusFunctionCode::READ_COILS, start_address, offset, bitmask);
+    auto new_switch = make_unique<ModbusSwitch>(ModbusFunctionCode::WRITE_SINGLE_COIL, start_address, offset, bitmask);
     this->set_internal(true);  // Make the BinarySensor internal and present a switch instead
     App.register_component(new_switch.get());
     App.register_switch(new_switch.get());
@@ -70,7 +69,7 @@ float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
 
   result = float(value);
   // No need tp publish if the value didn't change since the last publish
-  if (value != this->last_value ||  this->has_state_ == false ) {
+  if (true || value != this->last_value || this->has_state_ == false) {
     this->publish_state(value != 0.0);
     this->last_value = value;
     // Update the state of the connected switch
