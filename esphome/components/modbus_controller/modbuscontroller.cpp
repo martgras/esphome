@@ -86,11 +86,10 @@ void ModbusController::on_modbus_error(uint8_t function_code, uint8_t exception_
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
     ESP_LOGE(TAG,
-             "Modbus error - last command: expected response size=%d function code=0x%X  register adddress = 0x%X  "
+             "Modbus error - last command: function code=0x%X  register adddress = 0x%X  "
              "registers count=%d "
              "payload size=%zu",
-             current_command->expected_response_size, function_code, current_command->register_address,
-             current_command->register_count, current_command->payload.size());
+             function_code, current_command->register_address,current_command->register_count, current_command->payload.size());
     command_queue_.pop_front();
   }
 }
@@ -319,14 +318,8 @@ ModbusCommandItem ModbusCommandItem::create_read_command(
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = function_code;
   cmd.register_address = start_address;
-  cmd.expected_response_size = register_count * 2;
   cmd.register_count = register_count;
   cmd.on_data_func = std::move(handler);
-  // adjust expected response size for ReadCoils and DiscretInput
-  if (cmd.function_code == ModbusFunctionCode::READ_COILS ||
-      cmd.function_code == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
-    cmd.expected_response_size = (register_count + 7) / 8;
-  }
   return cmd;
 }
 
@@ -337,20 +330,11 @@ ModbusCommandItem ModbusCommandItem::create_read_command(ModbusController *modbu
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = function_code;
   cmd.register_address = start_address;
-  cmd.expected_response_size = register_count * 2;
   cmd.register_count = register_count;
   cmd.on_data_func = [modbusdevice](ModbusFunctionCode function_code, uint16_t start_address,
                                     const std::vector<uint8_t> data) {
     modbusdevice->on_register_data(function_code, start_address, data);
   };
-  // adjust expected response size for ReadCoils and DiscretInput
-  if (cmd.function_code == ModbusFunctionCode::READ_COILS) {
-    cmd.expected_response_size = (register_count + 7) / 8;
-  }
-  if (cmd.function_code == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
-    // cmd.expected_response_size = 1;
-    cmd.expected_response_size = (register_count + 7) / 8;
-  }
   return cmd;
 }
 
@@ -361,7 +345,6 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_command(ModbusControl
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = ModbusFunctionCode::WRITE_MULTIPLE_REGISTERS;
   cmd.register_address = start_address;
-  cmd.expected_response_size = 4;  // Response to write commands is always 4 bytes
   cmd.register_count = register_count;
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
                                          const std::vector<uint8_t> data) {
@@ -380,7 +363,6 @@ ModbusCommandItem ModbusCommandItem::create_write_single_coil(ModbusController *
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = ModbusFunctionCode::WRITE_SINGLE_COIL;
   cmd.register_address = address;
-  cmd.expected_response_size = 4;  // Response to write commands is always 4 bytes
   cmd.register_count = 1;
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
                                          const std::vector<uint8_t> data) {
@@ -397,7 +379,6 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_coils(ModbusControlle
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = ModbusFunctionCode::WRITE_MULTIPLE_COILS;
   cmd.register_address = start_address;
-  cmd.expected_response_size = 4;  // Response to write commands is always 4 bytes
   cmd.register_count = values.size();
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
                                          const std::vector<uint8_t> data) {
@@ -420,7 +401,6 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_coils(ModbusControlle
   if (bitcounter % 8) {
     cmd.payload.push_back(bitmask);
   }
-  cmd.expected_response_size = 4;
   return cmd;
 }
 
@@ -430,7 +410,6 @@ ModbusCommandItem ModbusCommandItem::create_write_single_command(ModbusControlle
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = ModbusFunctionCode::WRITE_SINGLE_REGISTER;
   cmd.register_address = start_address;
-  cmd.expected_response_size = 4;  // Response to write commands is always 4 bytes
   cmd.register_count = 1;          // not used here anyways
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
                                          const std::vector<uint8_t> data) {

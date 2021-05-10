@@ -28,7 +28,6 @@ void ModbusSwitch::add_to_controller(ModbusController *master, ModbusFunctionCod
   this->offset = offset;
   this->bitmask = bitmask;
   this->sensor_value_type = SensorValueType::BIT;
-  this->last_value = INT64_MIN;
   this->register_count = 1;
   this->skip_updates = 0;
   this->parent_ = master;

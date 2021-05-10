@@ -21,7 +21,6 @@ void ModbusTextSensor::add_to_controller(ModbusController *master, ModbusFunctio
   this->bitmask = 0xFFFFFFFF;
   this->sensor_value_type = SensorValueType::RAW;
   this->response_bytes_ = response_bytes;
-  this->last_value = INT64_MIN;
   this->register_count = register_count;
   this->hex_encode = hex_encode;
   this->skip_updates = skip_updates;
