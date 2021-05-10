@@ -56,48 +56,6 @@ time:
 tuya:
   time_id: sntp_time
 
-modbus:
-  id: modbus_epsolar
-
-modbus_controller:
-  modbus_id: modbus_epsolar
-  command_throttle: 0ms
-  id: traceranx
-  ## the Modbus device addr
-  address: 0x1
-  sensors:
-    - id: array_rated_voltage
-      name: "array_rated_voltage"
-      address: 0x3000
-      offset: 0
-      unit_of_measurement: "V"
-      modbus_functioncode: "read_input_registers"
-      value_type: U_WORD
-      accuracy_decimals: 1
-      skip_updates: 60
-      filters:
-        - multiply: 0.01
-
-  binary_sensors:
-    - id: charging_input_volt_failure
-      name: "Charging Input Volt Failure"
-      modbus_functioncode: read_input_registers
-      address: 0x3201
-      offset: 0
-      bitmask: 0xC000
-
-  text_sensors:
-    - name: "rtc_clock"
-      id: rtc_clock
-      internal: true
-      modbus_functioncode: read_holding_registers
-      address: 0x9013
-      offset: 0
-      register_count: 3
-      hex_encode: true
-      response_size: 6
-#end of modbus_controller
-
 sensor:
   - platform: homeassistant
     entity_id: sensor.hello_world
@@ -105,19 +63,6 @@ sensor:
   - platform: tuya
     id: tuya_sensor
     sensor_datapoint: 1
-
-  - platform: modbus_controller
-    modbuscomponent_id: traceranx
-    id: array_rated_current
-    name: "array_rated_current"
-    address: 0x3000
-    offset: 2
-    unit_of_measurement: "V"
-    modbus_functioncode: "read_input_registers"
-    value_type: U_WORD
-    accuracy_decimals: 2
-    filters:
-      - multiply: 0.01
 #
 # platform sensor.apds9960 requires component apds9960
 #
@@ -142,16 +87,6 @@ binary_sensor:
     id: tuya_binary_sensor
     sensor_datapoint: 1
 
-  - platform: modbus_controller
-    modbuscomponent_id: traceranx
-    id: manual_control_load
-    modbus_functioncode: read_coils
-    address: 2
-    offset: 0
-    name: "manual control the load"
-    bitmask: 1
-    create_switch: True
-
 climate:
   - platform: tuya
     id: tuya_climate
@@ -164,14 +99,6 @@ switch:
   - platform: tuya
     id: tuya_switch
     switch_datapoint: 1
-
-  - platform: modbus_controller
-    modbuscomponent_id: traceranx
-    id: reset_to_fabric_default
-    name: "Reset to Factory Default"
-    modbus_functioncode: write_single_coil
-    address: 0x15
-    bitmask: 1
 
 light:
   - platform: fastled_clockless
@@ -233,15 +160,9 @@ display:
     lambda: |-
       it.rectangle(0, 0, it.get_width(), it.get_height());
 
-text_sensor:
-  - platform: modbus_controller
-    modbuscomponent_id: traceranx
-    name: "rtc clock test 2"
-    id: rtc_clock_test2
-    internal: true
-    modbus_functioncode: read_holding_registers
-    address: 0x9013
-    offset: 0
-    register_count: 3
-    hex_encode: true
-    response_size: 6
+external_components:
+  - source: github://esphome/esphome@dev
+    refresh: 1d
+    components: ["bh1750"]
+  - source: ../esphome/components
+    components: ["sntp"]
