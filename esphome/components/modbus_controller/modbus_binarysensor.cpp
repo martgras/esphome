@@ -16,7 +16,6 @@ void ModbusBinarySensor::add_to_controller(ModbusController *master, ModbusFunct
   this->offset = offset;
   this->bitmask = bitmask;
   this->sensor_value_type = SensorValueType::BIT;
-  this->last_value = INT64_MIN;
   if (register_type == ModbusFunctionCode::READ_COILS || register_type == ModbusFunctionCode::READ_DISCRETE_INPUTS)
     this->register_count = offset + 1;
   else
@@ -68,14 +67,10 @@ float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
   }
 
   result = float(value);
-  // No need tp publish if the value didn't change since the last publish
-  if (true || value != this->last_value || this->has_state_ == false) {
-    this->publish_state(value != 0.0);
-    this->last_value = value;
-    // Update the state of the connected switch
-    if (this->modbus_switch != nullptr) {
-      this->modbus_switch.get()->publish_state(value);
-    }
+  this->publish_state(value != 0.0);
+  // Update the state of the connected switch
+  if (this->modbus_switch != nullptr) {
+    this->modbus_switch.get()->publish_state(value);
   }
   return result;
 }

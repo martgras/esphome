@@ -140,14 +140,12 @@ class ModbusController;
 
 struct SensorItem {
   ModbusFunctionCode register_type;
-  uint16_t start_address;
-  uint8_t offset;
+  SensorValueType sensor_value_type;
+  uint16_t start_address;  
   uint32_t bitmask;
+  uint8_t offset;  
   uint8_t register_count;
   uint8_t skip_updates;
-  SensorValueType sensor_value_type;
-
-  int64_t last_value{INT64_MIN};
 
   virtual std::string const &get_sensorname() = 0;
   virtual void log() = 0;
@@ -198,13 +196,10 @@ struct SensorItem {
 };
 
 struct ModbusCommandItem {
-  // keep memory consumption low.  Since all registers are 2 bytes and only write RTC needs to be written in 1 command 8
-  // bytes is enough
   static const size_t MAX_PAYLOAD_BYTES = 240;
   ModbusController *modbusdevice;
   uint16_t register_address;
   uint16_t register_count;
-  uint16_t expected_response_size;
   ModbusFunctionCode function_code;
   std::function<void(ModbusFunctionCode function_code, uint16_t start_address, const std::vector<uint8_t> &data)>
       on_data_func;

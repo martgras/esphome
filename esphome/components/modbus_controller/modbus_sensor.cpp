@@ -39,7 +39,6 @@ void ModbusSensor::add_to_controller(ModbusController *master, ModbusFunctionCod
   this->sensor_value_type = value_type;
   this->register_count = register_count;
   this->skip_updates = 0;
-  this->last_value = INT64_MIN;
   this->parent_ = master;
   master->add_sensor_item(this);
 }
@@ -104,14 +103,9 @@ float ModbusSensor::parse_and_publish(const std::vector<uint8_t> &data) {
 
   // No need to publish if the value didn't change since the last publish
   // can reduce mqtt traffic considerably if many sensors are used
-  ESP_LOGVV(TAG, " SENSOR : new: %lld  old: %lld ", value, this->last_value);
-  if (true || value != this->last_value || this->get_force_update() || this->has_state_ == false) {
-    // this->sensor_->raw_state = result;
-    this->publish_state(result);
-    this->last_value = value;
-  } else {
-    ESP_LOGV(TAG, "SENSOR %s value didn't change - don't publish", get_sensorname().c_str());
-  }
+  ESP_LOGVV(TAG, " SENSOR : new: %lld", value);
+  // this->sensor_->raw_state = result;
+  this->publish_state(result);
   return result;
 }
 // End ModbusSensor
