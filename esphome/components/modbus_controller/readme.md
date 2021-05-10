@@ -407,3 +407,22 @@ H   0x12 (18)  : byte count
 C   0x2f (47)  : crc
 C   0x31 (49)  : crc
 ````
+
+
+High Level Code Structure
+-------------------------
+
+all modbus items (modbus_sensor, modbus_binary_sensor...) derive from ModbusItem and are stored in a map where the start-address + offfset .. is the key
+At setup the map is enumerated and scanned for contigous ranges (items with the same start address). Theses ranges are stored in a list. 
+For each range a modbus command to read all datapoints in the range is constructed. 
+During update the ranges are enumerated and their read commands are queued to the send queue. 
+When the command has been sent it is moved to the incoming data queue - waiting for processing of the raw data.
+In loop if the incoming que is not empty the raw data is processed. 
+  items contained in current range are enurmerated and call parse_and_publish. 
+  The items extract the data from the raw response for the range using offset and bitmask
+If there is no incoming data pending commands from the send queue are sent out. 
+
+
+
+
+

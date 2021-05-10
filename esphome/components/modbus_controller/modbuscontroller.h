@@ -137,10 +137,6 @@ inline bool coil_from_vector(int coil, const std::vector<uint8_t> &data) {
 
 class ModbusController;
 
-struct RawData {
-  std::vector<uint8_t> raw;
-  ModbusController *modbus_;
-};
 
 struct SensorItem {
   ModbusFunctionCode register_type;
@@ -156,12 +152,6 @@ struct SensorItem {
   virtual std::string const &get_sensorname() = 0;
   virtual void log() = 0;
   virtual float parse_and_publish(const std::vector<uint8_t> &data) = 0;
-
-  void add_on_raw_data_received_callback(std::function<void(RawData)> callback) {
-    this->raw_data_callback_.add(std::move(callback));
-  }
-
-  CallbackManager<void(RawData)> raw_data_callback_;
 
   uint64_t getkey() const { return calc_key(register_type, start_address, offset, bitmask); }
   size_t get_register_size() {
@@ -289,7 +279,6 @@ class ModbusController : public PollingComponent, public modbus::ModbusDevice {
   uint16_t command_throttle_;
   static std::atomic_bool sending_;
 
-  friend class RawDataCodeTrigger;
   friend class ModbusSwitch;
 };
 

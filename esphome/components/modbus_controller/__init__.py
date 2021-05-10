@@ -1,6 +1,5 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import automation
 from esphome.components import mqtt
 from esphome.components import (
     sensor as core_sensor,
@@ -16,7 +15,6 @@ from esphome.const import (
     CONF_ID,
     CONF_ADDRESS,
     CONF_OFFSET,
-    CONF_TRIGGER_ID,
     CONF_NAME,
 )
 
@@ -48,10 +46,6 @@ AUTO_LOAD = [
 modbus_controller_ns = cg.esphome_ns.namespace("modbus_controller")
 ModbusController = modbus_controller_ns.class_(
     "ModbusController", cg.PollingComponent, modbus.ModbusDevice
-)
-RawData = modbus_controller_ns.struct("RawData")
-RawDataCodeTrigger = modbus_controller_ns.class_(
-    "RawDataCodeTrigger", automation.Trigger.template(RawData)
 )
 
 ModbusSwitch = modbus_controller_ns.class_(
@@ -96,7 +90,6 @@ SENSOR_VALUE_TYPE = {
     "U_QWORD_R": SensorValueType.S_QWORD_R,
 }
 
-CONF_ON_RAW = "on_raw"
 CONF_MQTT_ID2 = "mqtt_id_sensorswitch"
 CONF_CREATE_SWITCH = "create_switch"
 
@@ -147,11 +140,6 @@ modbus_switch_entry = core_switch.SWITCH_SCHEMA.extend(
 text_sensor_entry = core_text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusTextSensor),
-        cv.Optional(CONF_ON_RAW): automation.validate_automation(
-            {
-                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(RawDataCodeTrigger),
-            }
-        ),
         cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
         cv.Required(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
@@ -283,11 +271,6 @@ def to_code(config):
                     cfg[CONF_SKIP_UPDATES],
                 )
             )
-            if config.get(CONF_ON_RAW):
-                cfg_raw = cfg[CONF_ON_RAW]
-                for c in cfg_raw:
-                    trigger = cg.new_Pvariable(c[CONF_TRIGGER_ID], var, sens)
-                    yield automation.build_automation(trigger, [(RawData, "x")], c)
     if config.get("switches"):
         conf = config["switches"]
         for cfg in conf:

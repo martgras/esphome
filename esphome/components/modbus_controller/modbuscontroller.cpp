@@ -63,8 +63,8 @@ bool ModbusController::send_next_command_() {
 void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
-    current_command->payload = data;
     // Move the commandItem to the response queue
+    current_command->payload = std::move(data);
     this->incoming_queue_.push(std::move(current_command));
     ESP_LOGD(TAG, "Modbus respone queued");
     this->sending_ = false;
@@ -115,10 +115,6 @@ void ModbusController::on_register_data(ModbusFunctionCode function_code, uint16
   // loop through all sensors with the same start address
   while (map_it != sensormap.end() && map_it->second->start_address == start_address) {
     if (map_it->second->register_type == function_code) {
-      RawData r;
-      r.raw = data;
-      r.modbus_ = this;
-      map_it->second->raw_data_callback_.call(r);
       float val = map_it->second->parse_and_publish(data);
       ESP_LOGV(TAG, "Sensor : %s = %.02f ", map_it->second->get_sensorname().c_str(), val);
     }
