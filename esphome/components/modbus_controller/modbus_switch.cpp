@@ -19,9 +19,14 @@ void ModbusSwitch::add_to_controller(ModbusController *master, ModbusFunctionCod
 
   */
   this->register_type = register_type;
+  if (register_type == ModbusFunctionCode::WRITE_SINGLE_REGISTER ||
+      register_type == ModbusFunctionCode::WRITE_SINGLE_COIL) {
+    start_address += offset;
+    offset = 0;
+  }
   this->start_address = start_address;
-  this->bitmask = bitmask;
   this->offset = offset;
+  this->bitmask = bitmask;
   this->sensor_value_type = SensorValueType::BIT;
   this->last_value = INT64_MIN;
   this->register_count = 1;
@@ -32,11 +37,11 @@ void ModbusSwitch::add_to_controller(ModbusController *master, ModbusFunctionCod
 float ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
   bool value = (data[0] != 0);
   switch (this->register_type) {
-    case ModbusFunctionCode::READ_DISCRETE_INPUTS:
+    case ModbusFunctionCode::WRITE_SINGLE_REGISTER:
       //      value = data[this->offset] & 1;  // Discret Input is always just one bit
       value = coil_from_vector(this->offset, data);
       break;
-    case ModbusFunctionCode::READ_COILS:
+    case ModbusFunctionCode::WRITE_SINGLE_COIL:
       // offset for coil is the actual number of the coil not the byte offset
       value = coil_from_vector(this->offset, data);
       break;
@@ -44,7 +49,9 @@ float ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
       value = get_data<uint16_t>(data, this->offset) & this->bitmask;
       break;
   }
-
+  if (connected_sensor_) {
+    connected_sensor_->publish_state(value);
+  }
   return value;
 }
 

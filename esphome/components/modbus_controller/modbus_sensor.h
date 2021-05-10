@@ -6,8 +6,6 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char *MODBUS_TAG = "Modbus_Sensor";
-
 class ModbusSensor : public Component, public sensor::Sensor, public SensorItem {
  public:
   ModbusSensor(const std::string &name)

@@ -11,7 +11,14 @@ class ModbusSwitch : public Component, public switch_::Switch, public SensorItem
   ModbusSwitch(ModbusFunctionCode register_type, uint16_t address, uint8_t offset, uint32_t bitmask)
       : Component(), switch_::Switch() {
     this->register_type = register_type;
-    this->start_address = address;
+/*    
+    if (register_type == ModbusFunctionCode::WRITE_SINGLE_REGISTER ||
+        register_type == ModbusFunctionCode::WRITE_SINGLE_COIL) {
+      start_address += offset;
+      offset = 0;
+    }
+*/    
+    this->start_address = start_address;
     this->offset = offset;
     this->bitmask = bitmask;
   };

@@ -30,7 +30,6 @@ void ModbusTextSensor::add_to_controller(ModbusController *master, ModbusFunctio
 }
 
 float ModbusTextSensor::parse_and_publish(const std::vector<uint8_t> &data) {
-  int64_t value = 0;
   float result = this->response_bytes_;
   std::ostringstream output;
   uint8_t max_items = this->response_bytes_;

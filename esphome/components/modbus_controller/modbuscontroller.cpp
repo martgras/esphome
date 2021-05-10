@@ -43,14 +43,13 @@ bool ModbusController::send_next_command_() {
   uint32_t last_send = millis() - this->last_command_timestamp_;
 
   if (sending_ && last_send > 500) {
-    sending_ = false; // Clear send flag afer 0.5s 
+    sending_ = false;  // Clear send flag afer 0.5s
   }
   if (!sending_ && (last_send > this->command_throttle_) && !command_queue_.empty()) {
     this->sending_ = true;
     auto &command = command_queue_.front();
     ESP_LOGD(TAG, "Sending next modbus command %u %u", last_send, this->command_throttle_);
     command->send();
-    delay(2);
     this->last_command_timestamp_ = millis();
     if (!command->on_data_func) {  // No handler remove from queue directly after sending
       command_queue_.pop_front();
@@ -60,19 +59,26 @@ bool ModbusController::send_next_command_() {
   return (!command_queue_.empty());
 }
 
-// Dispatch the response to the registered handler
+// Queue incoming response
 void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
-  ESP_LOGD(TAG, "Modbus data %zu", data.size());
-
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
-    ESP_LOGD(TAG, "Dispatch to handler 0x%X", current_command->register_address);
+    current_command->payload = data;
+    // Move the commandItem to the response queue
+    this->incoming_queue_.push(std::move(current_command));
+    ESP_LOGD(TAG, "Modbus respone queued");
     this->sending_ = false;
-    current_command->on_data_func(current_command->function_code, current_command->register_address, data);
-
     command_queue_.pop_front();
   }
 }
+
+// Dispatch the response to the registered handler
+void ModbusController::process_modbus_data(const ModbusCommandItem *response) {
+  ESP_LOGD(TAG, "Process modbus response for address 0x%X size: %zu", response->register_address,
+           response->payload.size());
+  response->on_data_func(response->function_code, response->register_address, response->payload);
+}
+
 void ModbusController::on_modbus_error(uint8_t function_code, uint8_t exception_code) {
   ESP_LOGE(TAG, "Modbus error function code: 0x%X exception: %d ", function_code, exception_code);
   this->sending_ = false;
@@ -153,14 +159,6 @@ void ModbusController::update_range(RegisterRange &r) {
 // Once we get a response to the command it is removed from the queue and the next command is send
 //
 void ModbusController::update() {
-  static int UPDATE_CNT;
-
-  if (UPDATE_CNT++ == 0) {  // Not sure what happens here. Can't connect via Wifi without skipping the first update.
-                            // Maybe interfering with dump_config ?
-    ESP_LOGD(TAG, "Skipping update");
-    return;
-  }
-
   if (!command_queue_.empty()) {
     ESP_LOGW(TAG, "%d modbus commands already in queue", command_queue_.size());
   } else {
@@ -182,15 +180,12 @@ size_t ModbusController::create_register_ranges() {
   auto prev = ix;
   uint16_t current_start_address = ix->second->start_address;
   uint8_t buffer_offset = ix->second->offset;
-  uint8_t buffer_gap = 0;
   uint8_t skip_updates = ix->second->skip_updates;
   auto first_sensorkey = ix->second->getkey();
   int total_register_count = 0;
   while (ix != sensormap.end()) {
-    size_t diff = ix->second->start_address - prev->second->start_address;
     // use the lowest non zero value for the whole range
     // Because zero is the default value for skip_updates it is excluded from getting the min value.
-
     ESP_LOGV(TAG, "Register '%s': 0x%X %d %d  0x%llx (%d) buffer_offset = %d (0x%X) skip=%u",
              ix->second->get_sensorname().c_str(), ix->second->start_address, ix->second->register_count,
              ix->second->offset, ix->second->getkey(), total_register_count, buffer_offset, buffer_offset,
@@ -219,7 +214,6 @@ size_t ModbusController::create_register_ranges() {
       first_sensorkey = ix->second->getkey();
       total_register_count = ix->second->register_count;
       buffer_offset = ix->second->offset;
-      buffer_gap = ix->second->offset;
       n = 1;
     } else {
       n++;
@@ -291,7 +285,27 @@ void ModbusController::dump_config() {
   create_register_ranges();
 }
 
-void ModbusController::loop() { send_next_command_(); }
+void ModbusController::loop() {
+  // Incoming data to process?
+
+  /*
+    if (!incoming_data.empty()) {
+      auto &message = incoming_data.front();
+      process_modbus_data(message);
+      incoming_data.pop();
+  */
+
+  if (!incoming_queue_.empty()) {
+    auto &message = incoming_queue_.front();
+    if (message != nullptr)
+      process_modbus_data(message.get());
+    incoming_queue_.pop();
+
+  } else {
+    // all messages processed send pending commmands
+    send_next_command_();
+  }
+}
 
 void ModbusController::on_write_register_response(ModbusFunctionCode function_code, uint16_t start_address,
                                                   const std::vector<uint8_t> &data) {
