@@ -520,6 +520,273 @@ modbus_controller:
       unit_of_measurement: "A"
       filters:
         - multiply: 0.01
+    #- id: battery_type
+    #  address: 0x9000
+    #  offset: 0
+    #  name: "Battery Type"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+
+    #- id: temperature_compensation_coefficient
+    #  address: 0x9000
+    #  offset: 4
+    #  name: "Temperature compensation coefficient"
+    #  unit_of_measurement: "mV/°C/2V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: high_voltage_disconnect
+    #  address: 0x9000
+    #  offset: 6
+    #  name: "High Voltage disconnect"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: charging_limit_voltage
+    #  address: 0x9000
+    #  offset: 6
+    #  name: "Charging limit voltage"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: over_voltage_reconnect
+    #  address: 0x9000
+    #  offset: 8
+    #  name: "Over voltage reconnect"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: equalization_voltage
+    #  address: 0x9000
+    #  offset: 10
+    #  name: "Equalization voltage"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: boost_voltage
+    #  address: 0x9000
+    #  offset: 12
+    #  name: "Boost voltage"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: float_voltage
+    #  address: 0x9000
+    #  offset: 14
+    #  name: "Float voltage"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: boost_reconnect_voltage
+    #  address: 0x9000
+    #  offset: 16
+    #  name: "Boost reconnect voltage"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: low_voltage_reconnect
+    #  address: 0x9000
+    #  offset: 18
+    #  name: "Low voltage reconnect"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: under_voltage_recover
+    #  address: 0x9000
+    #  offset: 20
+    #  name: "Under voltage recover"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: under_voltage_reconect
+    #  address: 0x9000
+    #  offset: 22
+    #  name: "Under voltage reconnect"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: under_voltage_waring
+    #  address: 0x9000
+    #  offset: 24
+    #  name: "Under voltage warning"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: low_voltage_disconnect
+    #  address: 0x9000
+    #  offset: 26
+    #  name: "Low voltage disconnect"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: discharging_limit_voltage
+    #  address: 0x9000
+    #  offset: 28
+    #  name: "Discharging limit voltage"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: battery_temperature_warning_lower_limit
+    #  address: 0x9018
+    #  offset: 0
+    #  name: "Battery temperature warning lower limit"
+    #  unit_of_measurement: "°C"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: controller_inner_temperature_upper_limit
+    #  address: 0x9018
+    #  offset: 2
+    #  name: "Controller inner temperature upper limit"
+    #  unit_of_measurement: "°C"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: controller_inner_temperature_upper_limit
+    #  address: 0x9018
+    #  offset: 2
+    #  name: "Controller inner temperature upper limit"
+    #  unit_of_measurement: "°C"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: controller_inner_temperature_upper_limit_recover
+    #  address: 0x9018
+    #  offset: 4
+    #  name: "Controller inner temperature upper limit recover"
+    #  unit_of_measurement: "°C"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: dttv
+    #  address: 0x901E
+    #  offset: 0
+    #  name: "Day Time Threshold Voltage"
+    #  unit_of_measurement: "V"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: light_signal_startup_delay_time
+    #  address: 0x901E
+    #  offset: 2
+    #  name: "Light signal startup delay time"
+    #  unit_of_measurement: "mins"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: nttv
+    #  address: 0x901E
+    #  offset: 4
+    #  name: "Light Time Threshold Voltage"
+    #  unit_of_measurement: "mins"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+    #- id: light_signal_close_delay_time
+    #  address: 0x901E
+    #  offset: 6
+    #  name: "Light signal close delay time"
+    #  unit_of_measurement: "mins"
+    #  modbus_functioncode: read_holding_registers
+    #  value_type: U_WORD
+    #  filters:
+    #    - multiply: 0.01
+
+
+    #- id: load_controlling_modes
+    #    # 0000H Manual Control
+    #    # 0001H Light ON/OFF
+    #    # 0002H Light ON+ Timer/
+    #    # 0003H Time Control
+    #  address: 0x903D
+    #  offset: 0
+    #  name: "Light Time Threshold Voltage"
+    #  modbus_functioncode: read_holding_registers
+    #  accuracy_decimals: 0
+    #  value_type: U_WORD
+
+    #- id: working_time_length_1
+    #    # The length of load output timer1,
+    #    # D15-D8,hour, D7-D0, minute
+    #  address: 0x903D
+    #  offset: 2
+    #  name: "Working_time length 1"
+    #  modbus_functioncode: read_holding_registers
+    #  accuracy_decimals: 0
+    #  value_type: U_WORD
+
+    #- id: working_time_length_2
+    #  address: 0x903D
+    #  offset: 4
+    #  name: "Working_time length 1"
+    #  modbus_functioncode: read_holding_registers
+    #  accuracy_decimals: 0
+    #  value_type: U_WORD
+
+
+    #- id: backlight_time
+    #  address: 0x9063
+    #  offset: 0
+    #  name: "Backlight time"
+    #  modbus_functioncode: read_holding_registers
+    #  accuracy_decimals: 0
+    #  unit_of_measurement: "s"
+    #  value_type: U_WORD
 
     - id: length_of_night_minutes
       address: 0x9065
