@@ -39,65 +39,48 @@ uint16_t crc16(const uint8_t *data, uint8_t len) {
   }
   return crc;
 }
+
 bool Modbus::parse_modbus_byte_(uint8_t byte) {
   size_t at = this->rx_buffer_.size();
   this->rx_buffer_.push_back(byte);
   const uint8_t *raw = &this->rx_buffer_[0];
-  ESP_LOGV(TAG, "Modbus recieved Byte  %d (0X%x)", byte, byte);
+
   // Byte 0: modbus address (match all)
   if (at == 0)
     return true;
   uint8_t address = raw[0];
 
-  uint8_t function_code = raw[1];
+  // Byte 1: Function (msb indicates error)
+  if (at == 1)
+    return (byte & 0x80) != 0x80;
+
   // Byte 2: Size (with modbus rtu function code 4/3)
   // See also https://en.wikipedia.org/wiki/Modbus
   if (at == 2)
     return true;
 
   uint8_t data_len = raw[2];
-  uint8_t data_offset = 3;
-  // the response for write command mirrors the requests and data startes at offset 2 instead of 3 for read commands
-  if (function_code == 0x5 || function_code == 0x06 || function_code == 0x10) {
-    data_offset = 2;
-    data_len = 4;
-  }
-
-  // Error ( msb indicates error )
-  // response format:  Byte[0] = device address, Byte[1] function code | 0x80 , Byte[2] excpetion code, Byte[3-4] crc
-  if ((function_code & 0x80) == 0x80) {
-    data_offset = 2;
-    data_len = 1;
-  }
-
-  // Byte data_offset..data_offset+data_len-1: Data
-  if (at < data_offset + data_len)
+  // Byte 3..3+data_len-1: Data
+  if (at < 3 + data_len)
     return true;
 
   // Byte 3+data_len: CRC_LO (over all bytes)
-  if (at == data_offset + data_len)
+  if (at == 3 + data_len)
     return true;
-
-  // Byte data_offset+len+1: CRC_HI (over all bytes)
-  uint16_t computed_crc = crc16(raw, data_offset + data_len);
-  uint16_t remote_crc = uint16_t(raw[data_offset + data_len]) | (uint16_t(raw[data_offset + data_len + 1]) << 8);
+  // Byte 3+len+1: CRC_HI (over all bytes)
+  uint16_t computed_crc = crc16(raw, 3 + data_len);
+  uint16_t remote_crc = uint16_t(raw[3 + data_len]) | (uint16_t(raw[3 + data_len + 1]) << 8);
   if (computed_crc != remote_crc) {
     ESP_LOGW(TAG, "Modbus CRC Check failed! %02X!=%02X", computed_crc, remote_crc);
     return false;
   }
 
-  std::vector<uint8_t> data(this->rx_buffer_.begin() + data_offset, this->rx_buffer_.begin() + data_offset + data_len);
+  std::vector<uint8_t> data(this->rx_buffer_.begin() + 3, this->rx_buffer_.begin() + 3 + data_len);
 
   bool found = false;
   for (auto *device : this->devices_) {
     if (device->address_ == address) {
-      // Is it an error response?
-      if ((function_code & 0x80) == 0x80) {
-        ESP_LOGW(TAG, "Modbus error function code: 0x%X exception: %d", function_code, raw[2]);
-        device->on_modbus_error(function_code & 0x7F, raw[2]);
-      } else {
-        device->on_modbus_data(data);
-      }
+      device->on_modbus_data(data);
       found = true;
     }
   }
@@ -111,126 +94,25 @@ bool Modbus::parse_modbus_byte_(uint8_t byte) {
 
 void Modbus::dump_config() {
   ESP_LOGCONFIG(TAG, "Modbus:");
-  if (ctrl_pin_)
-    LOG_PIN("Ctrl Pin: ", ctrl_pin_);
+  this->check_uart_settings(9600, 2);
 }
 float Modbus::get_setup_priority() const {
   // After UART bus
   return setup_priority::BUS - 1.0f;
 }
+void Modbus::send(uint8_t address, uint8_t function, uint16_t start_address, uint16_t register_count) {
+  uint8_t frame[8];
+  frame[0] = address;
+  frame[1] = function;
+  frame[2] = start_address >> 8;
+  frame[3] = start_address >> 0;
+  frame[4] = register_count >> 8;
+  frame[5] = register_count >> 0;
+  auto crc = crc16(frame, 6);
+  frame[6] = crc >> 0;
+  frame[7] = crc >> 8;
 
-// update existing crc 
-uint16_t update_crc16(uint16_t crc, uint8_t byte) {
-  crc ^= byte;
-  for (uint8_t i = 0; i < 8; i++) {
-    if ((crc & 0x01) != 0) {
-      crc >>= 1;
-      crc ^= 0xA001;
-    } else {
-      crc >>= 1;
-    }
-  }
-  return crc;
-}
-
-void Modbus::send(uint8_t address, uint8_t function_code, uint16_t start_address, uint16_t number_of_entities,
-                  uint8_t payload_len, const uint8_t *payload) {
-  static const size_t MAX_VALUES = 128;
-
-#if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
-  uint8_t buffer[32];
-  uint8_t *p_ = buffer;
-
-#define LOG_BYTE(b) \
-  { \
-    if (p_ - buffer < sizeof(buffer)) \
-      *p_++ = b; \
-  }
-
-#define DUMP_LOG() \
-  { \
-    for (int i = 0; i < sizeof(buffer) && (i < p_ - buffer); i++) { \
-      ESP_LOGV(TAG, "write: 0x%x (0%u)", buffer[i], buffer[i]); \
-    } \
-  }
-#else
-#define LOG_BYTE(b)
-#define DUMP_LOG()
-#endif
-
-  if (ctrl_pin_) {
-    ctrl_pin_->digital_write(TX_ENABLE);
-  }
-
-  if (number_of_entities > MAX_VALUES) {
-    ESP_LOGE(TAG, "send too many values %d max=%zu", number_of_entities, MAX_VALUES);
-    return;
-  }
-  uint16_t crc = 0xFFFF;
-  this->write_byte(address);
-  crc = update_crc16(crc, address);
-  LOG_BYTE(address);
-  this->write_byte(function_code);
-  crc = update_crc16(crc, function_code);
-  LOG_BYTE(function_code);
-  this->write_byte(start_address >> 8);
-  crc = update_crc16(crc, start_address >> 8);
-  LOG_BYTE(start_address >> 8);
-  this->write_byte(start_address >> 0);
-  crc = update_crc16(crc, start_address >> 0);
-  LOG_BYTE(start_address >> 0);
-
-  if (function_code != 0x5 && function_code != 0x6) {
-    this->write_byte(number_of_entities >> 8);
-    crc = update_crc16(crc, number_of_entities >> 8);
-    this->write_byte(number_of_entities >> 0);
-    crc = update_crc16(crc, number_of_entities >> 0);
-    LOG_BYTE(number_of_entities >> 8);
-    LOG_BYTE(number_of_entities >> 0);
-  }
-  // if this is a write command add the payload
-  if (payload != nullptr) {
-    if (function_code == 0xF || function_code == 0x10) {  // Write multiple
-      this->write_byte(payload_len);                      // Byte count is required for write
-      crc = update_crc16(crc, payload_len);
-      LOG_BYTE(payload_len);
-    } else {
-      payload_len = 2;  // Write single register or coil
-    }
-    for (int i = 0; i < payload_len; i++) {
-      this->write_byte(payload[i]);
-      crc = update_crc16(crc, payload[i]);
-      LOG_BYTE(payload[i]);
-    }
-  }
-  this->write_byte(crc >> 0);
-  this->write_byte(crc >> 8);
-  LOG_BYTE(crc >> 0);
-  LOG_BYTE(crc >> 8);
-  this->flush();
-
-  if (ctrl_pin_) {
-    ctrl_pin_->digital_write(RX_ENABLE);
-  }
-  DUMP_LOG();
-}
-
-// Send raw command. Except CRC everything must be contained in payload
-void Modbus::send_raw(const std::vector<uint8_t> &payload) {
-  if (payload.size() == 0) {
-    return;
-  }
-  if (ctrl_pin_) {
-    ctrl_pin_->digital_write(TX_ENABLE);
-  }
-  auto crc = crc16(payload.data(), payload.size());
-  this->write_array(payload);
-  this->write_byte(crc & 0xFF);
-  this->write_byte((crc >> 8) & 0xFF);
-  this->flush();
-  if (ctrl_pin_) {
-    ctrl_pin_->digital_write(RX_ENABLE);
-  }
+  this->write_array(frame, 8);
 }
 
 }  // namespace modbus

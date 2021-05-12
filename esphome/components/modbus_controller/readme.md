@@ -12,7 +12,7 @@ Custom command can be sent to the slave using lambdas.
 Tested using an EPEVER Tracer2210AN MPPT controller,Heidelberg Wallbox and PZEM-017 
 
 ## Note - breaking change ##
-With the commit from Mai 12 modbus_controller no longer uses modbus as it's base
+With the [commit from Mai 12](https://github.com/martgras/esphome/commit/b099b3e3bbf6261e2b6bae1e3f08c8693006d3bf) modbus_controller no longer uses modbus as it's base
 The settings from modbus simply move to modbus_controller 
 
 You can now use modbus_component as a custom component without having to update the modbus component
