@@ -67,7 +67,6 @@ esphome:
           controller->queue_command(set_battery2_command);
           ESP_LOGI("ModbusLambda", "EPSOLAR Battery set");
 
-
 wifi:
   ssid: !secret wifi_sid
   password: !secret wifi_password
@@ -105,19 +104,14 @@ uart:
   baud_rate: 115200
   stop_bits: 1
 
-modbus:
-  id: modbus_epsolar
-  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
-  uart_id: mod_bus
-
-
 modbus_controller:
-  modbus_id: modbus_epsolar
-  command_throttle: 0ms
   id: epever
   ## the Modbus device addr
   address: 0x1
-  setup_priority: -10 
+  uart_id: mod_bus
+  command_throttle: 0ms
+  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  setup_priority: -10
   sensors:
     - id: array_rated_voltage
       name: "array_rated_voltage"
@@ -556,13 +550,13 @@ modbus_controller:
       offset: 0
       bitmask: 0xC000
 
+  switches:
     - id: manual_control_load
       modbus_functioncode: read_coils
       address: 2
       offset: 0
       name: "manual control the load"
       bitmask: 1
-      create_switch: True
 
     - id: default_control_the_load
       modbus_functioncode: read_coils
@@ -570,7 +564,6 @@ modbus_controller:
       offset: 1
       name: "default control the load"
       bitmask: 1
-      create_switch: True
 
     - id: enable_load_test
       modbus_functioncode: read_coils
@@ -578,7 +571,6 @@ modbus_controller:
       offset: 3
       name: "enable load test mode"
       bitmask: 1
-      create_switch: True
 
     - id: force_load
       modbus_functioncode: read_coils
@@ -586,7 +578,13 @@ modbus_controller:
       offset: 4
       name: "Force Load on/off"
       bitmask: 1
-      create_switch: True
+
+    - id: clear_energy_stats
+      modbus_functioncode: write_single_coil
+      address: 0x14
+      offset: 0
+      name: "Clear generating  electricity statistic"
+      bitmask: 1
 
   text_sensors:
     - name: "rtc_clock"
@@ -638,14 +636,6 @@ modbus_controller:
               // format time as YYYY-mm-dd hh:mm:ss
               sprintf(buffer,"%04d-%02d-%02d %02d:%02d:%02d",y+2000,month_,d,h,m,s);
               id(template_rtc).publish_state(buffer);
-
-  switches:
-    - id: clear_energy_stats
-      modbus_functioncode: write_single_coil
-      address: 0x14
-      offset: 0
-      name: "Clear generating  electricity statistic"
-      bitmask: 1
 
   update_interval: 30s
 

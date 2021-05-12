@@ -45,15 +45,11 @@ uart:
   baud_rate: 115200
   stop_bits: 1
 
-modbus:
-  id: modbus_epsolar
-  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
-  uart_id: mod_bus
-
 ### Note enabling all sensors will probably cause a stackoverflow
 ### https://github.com/esphome/issues/issues/855
 modbus_controller:
-  modbus_id: modbus_epsolar
+  uart_id: mod_bus
+  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
   command_throttle: 0ms
   id: traceranx
   ## the Modbus device addr
@@ -91,8 +87,7 @@ modbus_controller:
       register_count: 3
       hex_encode: true
       response_size: 6
-#end of modbus_controller
-
+  #end of modbus_controller
 
   switches:
     - id: clear_energy_stats
@@ -139,7 +134,6 @@ sensor:
     accuracy_decimals: 2
     filters:
       - multiply: 0.01
-
 
 binary_sensor:
   - platform: modbus_controller

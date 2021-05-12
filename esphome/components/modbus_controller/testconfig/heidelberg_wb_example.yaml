@@ -29,9 +29,9 @@ ota:
   password: !secret ota_password
 
 # Not required. The modbus_controller reads registers every 60 seconds.
-# Modbus Timeout must only be set >60000 ms. 
+# Modbus Timeout must only be set >60000 ms.
 # Also set Standby Function Control to 0 for power savings. The Wallbox
-# wakes up if a car is connected. 
+# wakes up if a car is connected.
 #
 # reset ModBus watchdog timer
 #interval:
@@ -49,7 +49,7 @@ sensor:
   - platform: wifi_signal
     name: "WiFi Signal ${devicename}"
     update_interval: 300s
-    
+
   - platform: homeassistant
     entity_id: input_number.wb_max_current #Slider from HASS, create as Helper
     id: wb_max_current
@@ -127,17 +127,14 @@ uart:
   stop_bits: 1
   parity: even
 
-modbus:
-  id: modbus_heidelberg_wallbox
-  ctrl_pin: 4 # if you need to set the driver enable (DE) pin high before transmitting data configure it here
-  uart_id: mod_bus
-  
 modbus_controller:
-  modbus_id: modbus_heidelberg_wallbox
   command_throttle: 0ms #100ms
   id: heidelberg_wallbox_id01
   # Modbus device addr
   address: 0x1
+  ctrl_pin: 4 # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+
   sensors:
     - id: version
       name: "Version"
@@ -145,14 +142,14 @@ modbus_controller:
       offset: 0
       modbus_functioncode: "read_input_registers"
       value_type: U_WORD
-      
+
     - id: charg_state
       name: "charging state"
       address: 0x0004
       offset: 2
       modbus_functioncode: "read_input_registers"
       value_type: U_WORD
-  
+
     - id: l1_a_rms
       name: "L1 A rms"
       address: 0x0004
@@ -161,7 +158,7 @@ modbus_controller:
       modbus_functioncode: "read_input_registers"
       value_type: U_WORD
       accuracy_decimals: 1
- 
+
     - id: l2_a_rms
       name: "L2 A rms"
       address: 0x0004
@@ -170,7 +167,7 @@ modbus_controller:
       modbus_functioncode: "read_input_registers"
       value_type: U_WORD
       accuracy_decimals: 1
-         
+
     - id: l3_a_rms
       name: "L3 A rms"
       address: 0x0004

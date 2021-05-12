@@ -7,7 +7,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
-#include "esphome/components/modbus/modbus.h"
+#include "modbus_base.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/automation.h"
 #ifdef USE_MQTT
@@ -219,13 +219,13 @@ struct ModbusCommandItem {
                                                        int16_t value);
   static ModbusCommandItem create_write_single_coil(ModbusController *modbusdevice, uint16_t address, bool value);
   static ModbusCommandItem create_write_multiple_coils(ModbusController *modbusdevice, uint16_t start_address,
-                                                         const std::vector<bool> &values);
+                                                       const std::vector<bool> &values);
   static ModbusCommandItem create_custom_command(ModbusController *modbusdevice, const std::vector<uint8_t> &values);
 };
 
-class ModbusController : public PollingComponent, public modbus::ModbusDevice {
+class ModbusController : public ModbusDevice {
  public:
-  ModbusController(uint16_t throttle = 0) : PollingComponent(), modbus::ModbusDevice(), command_throttle_(throttle){};
+  ModbusController(uint16_t throttle = 0) : ModbusDevice(), command_throttle_(throttle){};
   size_t create_register_ranges();
 
   bool remove_register_range(uint16_t start_address);
@@ -274,8 +274,6 @@ class ModbusController : public PollingComponent, public modbus::ModbusDevice {
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
   static std::atomic_bool sending_;
-
-  friend class ModbusSwitch;
 };
 
 }  // namespace modbus_controller
