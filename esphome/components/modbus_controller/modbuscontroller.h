@@ -28,6 +28,7 @@ namespace modbus_controller {
 class ModbusController;
 
 enum class ModbusFunctionCode {
+  CUSTOM = 0x00,
   READ_COILS = 0x01,
   READ_DISCRETE_INPUTS = 0x02,
   READ_HOLDING_REGISTERS = 0x03,
@@ -137,13 +138,12 @@ inline bool coil_from_vector(int coil, const std::vector<uint8_t> &data) {
 
 class ModbusController;
 
-
 struct SensorItem {
   ModbusFunctionCode register_type;
   SensorValueType sensor_value_type;
-  uint16_t start_address;  
+  uint16_t start_address;
   uint32_t bitmask;
-  uint8_t offset;  
+  uint8_t offset;
   uint8_t register_count;
   uint8_t skip_updates;
 
@@ -219,7 +219,8 @@ struct ModbusCommandItem {
                                                        int16_t value);
   static ModbusCommandItem create_write_single_coil(ModbusController *modbusdevice, uint16_t address, bool value);
   static ModbusCommandItem create_write_multiple_coils(ModbusController *modbusdevice, uint16_t start_address,
-                                                       const std::vector<bool> &values);
+                                                         const std::vector<bool> &values);
+  static ModbusCommandItem create_custom_command(ModbusController *modbusdevice, const std::vector<uint8_t> &values);
 };
 
 class ModbusController : public PollingComponent, public modbus::ModbusDevice {

@@ -34,13 +34,13 @@ void ModbusSwitch::add_to_controller(ModbusController *master, ModbusFunctionCod
 }
 
 float ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
-  bool value = (data[0] != 0);
+  int64_t value = 0;
+  float result = NAN;
   switch (this->register_type) {
-    case ModbusFunctionCode::WRITE_SINGLE_REGISTER:
-      //      value = data[this->offset] & 1;  // Discret Input is always just one bit
+    case ModbusFunctionCode::READ_DISCRETE_INPUTS:
       value = coil_from_vector(this->offset, data);
       break;
-    case ModbusFunctionCode::WRITE_SINGLE_COIL:
+    case ModbusFunctionCode::READ_COILS:
       // offset for coil is the actual number of the coil not the byte offset
       value = coil_from_vector(this->offset, data);
       break;
@@ -48,10 +48,10 @@ float ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
       value = get_data<uint16_t>(data, this->offset) & this->bitmask;
       break;
   }
-  if (connected_sensor_) {
-    connected_sensor_->publish_state(value);
-  }
-  return value;
+
+  result = float(value);
+  this->publish_state(value != 0.0);
+  return result;
 }
 
 void ModbusSwitch::write_state(bool state) {
@@ -65,16 +65,18 @@ void ModbusSwitch::write_state(bool state) {
   ESP_LOGD(TAG, "write_state for ModbusSwitch '%s': new value = %d  type = %d address = %X offset = %x",
            this->get_name().c_str(), state, (int) this->register_type, this->start_address, this->offset);
   switch (this->register_type) {
-    case ModbusFunctionCode::WRITE_SINGLE_COIL:
+    case ModbusFunctionCode::READ_COILS:
+    // offset for coil and discrete inputs is the coil/register number not bytes
       cmd = ModbusCommandItem::create_write_single_coil(parent_, this->start_address + this->offset, state);
       break;
-    case ModbusFunctionCode::WRITE_SINGLE_REGISTER:
-      cmd = ModbusCommandItem::create_write_single_command(parent_, this->start_address,
-                                                           state ? 0xFFFF & this->bitmask : 0);
+    case ModbusFunctionCode::READ_DISCRETE_INPUTS:
+      cmd = ModbusCommandItem::create_write_single_command(parent_, this->start_address + this->offset, state);
       break;
+
     default:
-      ESP_LOGE(TAG, "Invalid function code for ModbusSwitch: %d", (int) this->register_type);
-      return;
+      // since offset is in bytes and a register is 16 bits we get the start by adding offset/2
+      cmd = ModbusCommandItem::create_write_single_command(parent_, this->start_address + this->offset/2,
+                                                           state ? 0xFFFF & this->bitmask : 0);
       break;
   }
   parent_->queue_command(std::move(cmd));

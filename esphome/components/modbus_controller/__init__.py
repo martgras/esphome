@@ -1,6 +1,5 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import mqtt
 from esphome.components import (
     sensor as core_sensor,
     modbus,
@@ -90,11 +89,6 @@ SENSOR_VALUE_TYPE = {
     "U_QWORD_R": SensorValueType.S_QWORD_R,
 }
 
-CONF_MQTT_ID2 = "mqtt_id_sensorswitch"
-CONF_CREATE_SWITCH = "create_switch"
-
-# CONF_SWITCH_ID = "modbusswitch_id"
-
 MODBUS_REGISTRY = Registry()
 validate_modbus_range = cv.validate_registry("sensors", MODBUS_REGISTRY)
 
@@ -111,10 +105,6 @@ sensor_entry = core_sensor.SENSOR_SCHEMA.extend(
     }
 )
 
-#        cv.OnlyWith(CONF_MQTT_ID2, "mqtt"): cv.declare_id(
-#            mqtt.MQTTSwitchComponent
-#        ),
-
 binary_sensor_entry = core_binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusBinarySensor),
@@ -122,7 +112,6 @@ binary_sensor_entry = core_binary_sensor.BINARY_SENSOR_SCHEMA.extend(
         cv.Required(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_BITMASK, default=0x1): cv.hex_uint32_t,
-        cv.Optional(CONF_CREATE_SWITCH, default=False): cv.boolean,
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
     }
 )
@@ -247,14 +236,9 @@ def to_code(config):
                     cfg[CONF_ADDRESS],
                     cfg[CONF_OFFSET],
                     cfg[CONF_BITMASK],
-                    cfg[CONF_CREATE_SWITCH],
                     cfg[CONF_SKIP_UPDATES],
                 )
             )
-        if CONF_MQTT_ID2 in config:
-            mqtt_ = cg.new_Pvariable(config[CONF_MQTT_ID2], var)
-            yield mqtt.register_mqtt_component(mqtt_, config)
-
     if config.get("text_sensors"):
         conf = config["text_sensors"]
         for cfg in conf:

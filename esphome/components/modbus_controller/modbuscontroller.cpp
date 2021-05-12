@@ -89,7 +89,8 @@ void ModbusController::on_modbus_error(uint8_t function_code, uint8_t exception_
              "Modbus error - last command: function code=0x%X  register adddress = 0x%X  "
              "registers count=%d "
              "payload size=%zu",
-             function_code, current_command->register_address,current_command->register_count, current_command->payload.size());
+             function_code, current_command->register_address, current_command->register_count,
+             current_command->payload.size());
     command_queue_.pop_front();
   }
 }
@@ -410,7 +411,7 @@ ModbusCommandItem ModbusCommandItem::create_write_single_command(ModbusControlle
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = ModbusFunctionCode::WRITE_SINGLE_REGISTER;
   cmd.register_address = start_address;
-  cmd.register_count = 1;          // not used here anyways
+  cmd.register_count = 1;  // not used here anyways
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
                                          const std::vector<uint8_t> data) {
     modbusdevice->on_write_register_response(cmd.function_code, start_address, data);
@@ -420,10 +421,27 @@ ModbusCommandItem ModbusCommandItem::create_write_single_command(ModbusControlle
   return cmd;
 }
 
+ModbusCommandItem ModbusCommandItem::create_custom_command(ModbusController *modbusdevice,
+                                                           const std::vector<uint8_t> &values) {
+  ModbusCommandItem cmd;
+  cmd.modbusdevice = modbusdevice;
+  cmd.function_code = ModbusFunctionCode::CUSTOM;
+  cmd.on_data_func = [](ModbusFunctionCode, uint16_t, const std::vector<uint8_t> data) {
+    ESP_LOGI(TAG, "Custom Command sent");
+  };
+  cmd.payload = values;
+
+  return cmd;
+}
+
 bool ModbusCommandItem::send() {
+  if (this->function_code != ModbusFunctionCode::CUSTOM) {
+    modbusdevice->send(uint8_t(this->function_code), this->register_address, this->register_count, this->payload.size(),
+                       this->payload.empty() ? nullptr : &this->payload[0]);
+  } else {
+    modbusdevice->send_raw(this->payload);
+  }
   ESP_LOGV(TAG, "Command sent %d 0x%X %d", uint8_t(this->function_code), this->register_address, this->register_count);
-  modbusdevice->send(uint8_t(this->function_code), this->register_address, this->register_count, this->payload.size(),
-                     this->payload.empty() ? nullptr : &this->payload[0]);
   return true;
 }
 

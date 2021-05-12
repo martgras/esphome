@@ -119,7 +119,7 @@ float Modbus::get_setup_priority() const {
   return setup_priority::BUS - 1.0f;
 }
 
-// Avoid copying the data and write the output directly
+// update existing crc 
 uint16_t update_crc16(uint16_t crc, uint8_t byte) {
   crc ^= byte;
   for (uint8_t i = 0; i < 8; i++) {
@@ -214,53 +214,23 @@ void Modbus::send(uint8_t address, uint8_t function_code, uint16_t start_address
   }
   DUMP_LOG();
 }
-void Modbus::send_words(uint8_t address, uint8_t function_code, uint16_t start_address, uint16_t register_count,
-                        const uint16_t *payload) {
-  // send(address,function_code,start_address,register_count, register_count*2, (const uint8_t *)payload);
-  /*
-    static const size_t MAX_VALUES = 128;
-    if (ctrl_pin_) {
-      ctrl_pin_->digital_write(TX_ENABLE);
-    }
 
-    if (register_count > MAX_VALUES) {
-      ESP_LOGE(TAG, "send too many values %d max=%zu", register_count, MAX_VALUES);
-      return;
-    }
-    uint16_t crc = 0xFFFF;
-    this->write_byte(address);
-    crc = update_crc16(crc, address);
-    this->write_byte(function_code);
-    crc = update_crc16(crc, function_code);
-    this->write_byte(start_address >> 8);
-    crc = update_crc16(crc, start_address >> 8);
-    this->write_byte(start_address >> 0);
-    crc = update_crc16(crc, start_address >> 0);
-    this->write_byte(register_count >> 8);
-    crc = update_crc16(crc, register_count >> 8);
-    this->write_byte(register_count >> 0);
-    crc = update_crc16(crc, register_count >> 0);
-    uint8_t data_bytes = 6;
-
-    // if this is a write command add the payload
-    if (payload != nullptr) {
-      this->write_byte(register_count * 2);  // Byte count is required for write
-      crc = update_crc16(crc, register_count * 2);
-      data_bytes++;
-      for (int i = 0; i < register_count; i++) {
-        this->write_byte(payload[i] >> 8);
-        crc = update_crc16(crc, payload[i] >> 8);
-        this->write_byte(payload[i] >> 0);
-        crc = update_crc16(crc, payload[i] >> 0);
-      }
-    }
-    this->write_byte(crc >> 0);
-    this->write_byte(crc >> 8);
-    this->flush();
-
-    if (ctrl_pin_)
-      ctrl_pin_->digital_write(RX_ENABLE);
-  */
+// Send raw command. Except CRC everything must be contained in payload
+void Modbus::send_raw(const std::vector<uint8_t> &payload) {
+  if (payload.size() == 0) {
+    return;
+  }
+  if (ctrl_pin_) {
+    ctrl_pin_->digital_write(TX_ENABLE);
+  }
+  auto crc = crc16(payload.data(), payload.size());
+  this->write_array(payload);
+  this->write_byte(crc & 0xFF);
+  this->write_byte((crc >> 8) & 0xFF);
+  this->flush();
+  if (ctrl_pin_) {
+    ctrl_pin_->digital_write(RX_ENABLE);
+  }
 }
 
 }  // namespace modbus
