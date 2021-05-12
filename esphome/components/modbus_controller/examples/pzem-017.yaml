@@ -47,7 +47,7 @@ uart:
 
 modbus_controller:
   command_throttle: 0ms
-  id: pzem01
+  id: pzem017
   ## the Modbus device addr
   address: 0x1
   # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here

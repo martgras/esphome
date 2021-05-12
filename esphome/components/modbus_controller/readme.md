@@ -1,6 +1,6 @@
 # Modbus controller component
 
-## A fork of [esphome](https://github.com/esphome/esphome) adding support for monitoring  modbus slave
+## A fork of [esphome](https://github.com/esphome/esphome) adding support for monitoring a modbus slave
 
 Initially I created this component only for the EPEVER Trace solar controller (You can find that implementation in the epever branch here. )
 Since alot of my code was already pretty generic I decided to create a general modbus component instead.
@@ -9,11 +9,11 @@ Modbus_controller suppors sensors, binary_sensors, text_sensors and switches
 Custom command can be sent to the slave using lambdas.
 
 
-Tested using an EPEVER Tracer2210AN MPPT controller,Heidelberg Wallbox and PZEM-017 
+Tested using an EPEVER Tracer2210AN MPPT controller,Heidelberg Wallbox and PZEM-017
 
 ## Note - breaking change ##
 With the [commit from Mai 12](https://github.com/martgras/esphome/commit/b099b3e3bbf6261e2b6bae1e3f08c8693006d3bf) modbus_controller no longer uses modbus as it's base
-The settings from modbus simply move to modbus_controller 
+The settings from modbus simply move to modbus_controller
 
 You can now use modbus_component as a custom component without having to update the modbus component
 
@@ -30,7 +30,7 @@ modbus:
   id: modbus_epever
   ctrl_pin: 4 # if you need to set the driver enable (DE) pin high before transmitting data configure it here
   uart_id: mod_bus
-  
+
 modbus_controller:
   modbus_id: modbus_epever
   command_throttle: 0ms #100ms
@@ -38,7 +38,7 @@ modbus_controller:
   # Modbus device addr
   address: 0x1
 ````
-changes to 
+changes to
 
 ````yaml
 uart:
@@ -90,7 +90,7 @@ esphome <path to your config.yaml> run
 Modbus sensors can be directly defined (inline) under the modbus_controller hub or as standalone components
 
 Technically there is no difference between the "inline" and the standard definitions approach.
-Because the project started supporting only "inline" I'm keeping it in the code because it doesn't impact the code size and is a bit more convenient. The additional work to support both schemata is done in the python scripts generating the C++ code 
+Because the project started supporting only "inline" I'm keeping it in the code because it doesn't impact the code size and is a bit more convenient. The additional work to support both schemata is done in the python scripts generating the C++ code
 
 ````
 modbus:
@@ -148,7 +148,7 @@ sensors:
 
 
 
-[Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/testconfig/epever.yaml)
+[Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/examples/epever.yaml)
 
 
 ### Format
@@ -178,14 +178,14 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
     - U_DWORD (unsigned float from 2 registers = 32bit)
     - S_DWORD (unsigned float from 2 registers = 32bit)
     - U_DWORD_R (unsigend float from 2 registers low word first )
-    - S_DWORD_R (sigend float from 2 registers low word first )    
+    - S_DWORD_R (sigend float from 2 registers low word first )
     - U_QWORD (unsigned float from 4 registers = 64bit
     - S_QWORD (signed float from 4 registers = 64bit
     - U_QWORD_R (unsigend float from 4 registers low word first )
-    - S_QWORD_R (sigend float from 4 registers low word first )    
+    - S_QWORD_R (sigend float from 4 registers low word first )
 
 
-modbus defines serveral register types and function codes to access them. 
+modbus defines serveral register types and function codes to access them.
 The following function codes are implemented
 
     - "read_coils": Function 01 (01hex) Read Coils - Reads the ON/OFF status of discrete coils in the slave.
@@ -202,43 +202,43 @@ The following function codes are implemented
 
   - platform: modbus_controller
   - cmodbus_id: id of the modbus hub
-  - command_throttle:  milliseconds between 2 requests to the slave. Some slaves limit the rate of requests they can handle (e.g. only 1 request/s). 
+  - command_throttle:  milliseconds between 2 requests to the slave. Some slaves limit the rate of requests they can handle (e.g. only 1 request/s).
   - id: component id
   - address: modbus slave address
 
 
-#### sensor 
+#### sensor
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
-  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
+  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address.
     - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.
   - bitmask: some values are packed in a response. The bitmask can be used to extract a value from the response.  For example, the high byte value register 0x9013 contains the minute value of the current time. To only extract this value use bitmask: 0xFF00.  The result will be automatically right shifted by the number of 0 before the first 1 in the bitmask.  For 0xFF00 (0b1111111100000000) the result is shifted 8 positions.  More than one sensor can use the same address/offset if the bitmask is different.
 
 #### binarysensor
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
-  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
-    - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.  
+  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address.
+    - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.
   - bitmask: some values are packed in a response. The bitmask is used to determined if the result is true or false
 
 
 #### text sensor:
    - modbus_functioncode: type of register
    - address: start address of the first register in a range
-   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
+   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address.
    - response_size: response number of bytes of the response
-   - hex_encode: true | false     If the response is binary data it can't be published. Since a text sensor only publishes strings the hex_encode option encodes binary data as 2 byte hex string. 0x71 will be sent as "71". This allows you to process the data in a on_value lambda. See the example below how to convert the binary time data to a string and also how to set the time of the controller 
-   - register_count: The number of registers this data point spans. Default is 1 
+   - hex_encode: true | false     If the response is binary data it can't be published. Since a text sensor only publishes strings the hex_encode option encodes binary data as 2 byte hex string. 0x71 will be sent as "71". This allows you to process the data in a on_value lambda. See the example below how to convert the binary time data to a string and also how to set the time of the controller
+   - register_count: The number of registers this data point spans. Default is 1
    - bitmask: some values are packed in a single response word. bitmask is used to convert to a bool value. For example, bit 8 of the register 0x3200 indicates an battery error. Therefore, if the bitmask is 256. the operation is `result = (raw value & bitmask != 0)`. More than one sensor can use the same address/offset if the bitmask is different
-   
+
 #### switch
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
-  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
-    - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.  
+  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address.
+    - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.
   - bitmask: applied before sending the value to the controller
 
-modbus_switch works like modbus_binarysensor. modbus_functioncode should be the code to read the value from the slave. The write command will be created based on the function code. 
+modbus_switch works like modbus_binarysensor. modbus_functioncode should be the code to read the value from the slave. The write command will be created based on the function code.
 To define a switch for a coil function code should be "read_coils". The command to change the setting will then be write_single_coil
 Example
 
@@ -254,10 +254,10 @@ switch:
     bitmask: 1
 ````
 
-Since offset is not zero the read command is part of a range and will be parseed when the range is updated. 
+Since offset is not zero the read command is part of a range and will be parseed when the range is updated.
 The write command to be constructed uses the function code to determine the write command. For a coil it is "write single coil".
-Because the write command only touches one register start_address and offset need to be adjusted. 
-The final command will be write_single_coil address 5 (start_address+offset) value 1 or 0 
+Because the write command only touches one register start_address and offset need to be adjusted.
+The final command will be write_single_coil address 5 (start_address+offset) value 1 or 0
 
 For holding registers the write command will be "write_single_register". Because the offset for holding registers is given in bytes and the size of a register is 16 bytes the start_address is calculated as start_address + offset/2
 
@@ -267,9 +267,9 @@ For holding registers the write command will be "write_single_register". Because
 Write support is only implemented for switches.
 However the C++ code already has the required methods to write to a modbus register
 
-These methods can be called from a lambda. 
-Here is an example how to set the rtc clock of a EPEVER Trace AN controller. 
-The time is set by writing 12 bytes to register 0x9013. 
+These methods can be called from a lambda.
+Here is an example how to set the rtc clock of a EPEVER Trace AN controller.
+The time is set by writing 12 bytes to register 0x9013.
 The code reads the current time of the controller using a text sensor and compares it with the time of the esp.
 If they differ the time of the esp is sent to the EPEVER controller.
 
@@ -328,7 +328,7 @@ If they differ the time of the esp is sent to the EPEVER controller.
 ````
 
 
-## Protocol decoding example ## 
+## Protocol decoding example ##
 
 
 ````
@@ -412,8 +412,8 @@ If they differ the time of the esp is sent to the EPEVER controller.
       accuracy_decimals: 0
 ````
 
-To minimize the required transactions all registers with the same base address are read in one request. 
-The response is mapped to the sensor based on register_count and offset in bytes. 
+To minimize the required transactions all registers with the same base address are read in one request.
+The response is mapped to the sensor based on register_count and offset in bytes.
 
 Request
 ````
@@ -462,23 +462,40 @@ C   0x2f (47)  : crc
 C   0x31 (49)  : crc
 ````
 
-API 
-===
-There are no automation methods defined. To help creating lambdas that can write data to the slave the internal API of this component can be used 
+### Example Configurations ###
+[EPEVER controller](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/examples/epever.yaml)
+
+[Heidelberg Wallbox](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/examples/heidelberg_wb_example.yaml)
+
+[pzem-017](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/examples/pzem-01.yaml)
 
 
-High Level Code Structure
--------------------------
+
+
+
+
+
+
+### High Level Code Structure ###
+
 
 all modbus items (modbus_sensor, modbus_binary_sensor...) derive from ModbusItem and are stored in a map where the start-address + offfset .. is the key
-At setup the map is enumerated and scanned for contigous ranges (items with the same start address). Theses ranges are stored in a list. 
-For each range a modbus command to read all datapoints in the range is constructed. 
-During update the ranges are enumerated and their read commands are queued to the send queue. 
+
+At setup the map is enumerated and scanned for contigous ranges (items with the same start address). Theses ranges are stored in a list.
+For each range a modbus command to read all datapoints in the range is constructed.
+
+During update the ranges are enumerated and their read commands are queued to the send queue.
+
 When the command has been sent it is moved to the incoming data queue - waiting for processing of the raw data.
-In loop if the incoming que is not empty the raw data is processed. 
-  items contained in current range are enurmerated and call parse_and_publish. 
+
+In loop if the incoming que is not empty the raw data is processed.
+
+  items contained in current range are enurmerated and call parse_and_publish.
+
   The items extract the data from the raw response for the range using offset and bitmask
-If there is no incoming data pending commands from the send queue are sent out. 
+
+If there is no incoming data pending commands from the send queue are sent out.
+
 
 
 
