@@ -9,9 +9,54 @@ Modbus_controller suppors sensors, binary_sensors, text_sensors and switches
 Custom command can be sent to the slave using lambdas.
 
 
-Tested using an EPEVER Tracer2210AN MPPT controller and PZEM-017 
+Tested using an EPEVER Tracer2210AN MPPT controller,Heidelberg Wallbox and PZEM-017 
 
+## Note - breaking change ##
+With the commit from Mai 12 modbus_controller no longer uses modbus as it's base
+The settings from modbus simply move to modbus_controller 
 
+You can now use modbus_component as a custom component without having to update the modbus component
+
+````yaml
+uart:
+  id: mod_bus
+  tx_pin: 5
+  rx_pin: 2
+  baud_rate: 19200
+  stop_bits: 1
+  parity: even
+
+modbus:
+  id: modbus_epever
+  ctrl_pin: 4 # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+  
+modbus_controller:
+  modbus_id: modbus_epever
+  command_throttle: 0ms #100ms
+  id: mdobus_epever_id01
+  # Modbus device addr
+  address: 0x1
+````
+changes to 
+
+````yaml
+uart:
+  id: mod_bus
+  tx_pin: 5
+  rx_pin: 2
+  baud_rate: 19200
+  stop_bits: 1
+  parity: even
+
+modbus_controller:
+  command_throttle: 0ms #100ms
+  id: modbus_epever_id01
+  # Modbus device addr
+  address: 0x1
+  ctrl_pin: 4 # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+````
 
 
 ## Hardware setup
@@ -50,16 +95,16 @@ Because the project started supporting only "inline" I'm keeping it in the code 
 ````
 modbus:
   id: modbus_epsolar
-  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
-  uart_id: mod_bus
+
 
 modbus_controller:
-  modbus_id: modbus_epsolar
+
   command_throttle: 0ms
   id: traceranx
   ## the Modbus device addr
   address: 0x1
-  ## Any modbus registers not already implemented can be defined here
+  uart_id: mod_bus
+  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
   ##
   sensors:
     - id: array_rated_voltage
@@ -80,7 +125,7 @@ or define modbus_controller hub and sensors seperately
 
 ````
 modbus_controller:
-  modbus_id: modbus_epsolar
+  uart_id: mod_bus
   command_throttle: 0ms
   id: traceranx
   ## the Modbus device addr
@@ -193,7 +238,7 @@ The following function codes are implemented
     - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.  
   - bitmask: applied before sending the value to the controller
 
-modbus_switch works like modbus_binarysensor. modbus_functioncode should be the code to read the value from the slave. The write command will be created based on the register type. 
+modbus_switch works like modbus_binarysensor. modbus_functioncode should be the code to read the value from the slave. The write command will be created based on the function code. 
 To define a switch for a coil function code should be "read_coils". The command to change the setting will then be write_single_coil
 Example
 
