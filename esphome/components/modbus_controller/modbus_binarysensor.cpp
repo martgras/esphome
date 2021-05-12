@@ -9,7 +9,7 @@ static const char *TAG = "modbus_binarysensor";
 
 // ModbusBinarySensor
 void ModbusBinarySensor::add_to_controller(ModbusController *master, ModbusFunctionCode register_type,
-                                           uint16_t start_address, uint8_t offset, uint32_t bitmask, bool create_switch,
+                                           uint16_t start_address, uint8_t offset, uint32_t bitmask,
                                            uint8_t skip_updates) {
   this->register_type = register_type;
   this->start_address = start_address;
@@ -22,28 +22,6 @@ void ModbusBinarySensor::add_to_controller(ModbusController *master, ModbusFunct
     this->register_count = 1;
 
   this->skip_updates = skip_updates;
-
-  // If this is coil with read/write we can created a switch item on the fly
-  // if create_switch is true then the binary_sensor will be changed to internal and a switch with the same name is
-  // created when the binary_sensor value is updated the change will be synced to the switch item and vice versa
-  if (create_switch && (register_type == ModbusFunctionCode::READ_COILS)) {
-    auto new_switch = make_unique<ModbusSwitch>(ModbusFunctionCode::WRITE_SINGLE_COIL, start_address, offset, bitmask);
-    this->set_internal(true);  // Make the BinarySensor internal and present a switch instead
-    App.register_component(new_switch.get());
-    App.register_switch(new_switch.get());
-    new_switch->set_name(this->get_name());
-    new_switch->start_address = this->start_address;
-    new_switch->offset = this->offset;
-    new_switch->bitmask = this->bitmask;
-    new_switch->set_modbus_parent(master);
-    new_switch->set_connected_sensor(this);
-#ifdef USE_MQTT
-    auto mqtt_sw = make_unique<mqtt::MQTTSwitchComponent>(new_switch.get());
-    App.register_component(mqtt_sw.get());
-    this->mqtt_switch = std::move(mqtt_sw);
-#endif
-    this->modbus_switch = std::move(new_switch);
-  }
   this->parent_ = master;
   master->add_sensor_item(this);
 }
@@ -68,10 +46,6 @@ float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
 
   result = float(value);
   this->publish_state(value != 0.0);
-  // Update the state of the connected switch
-  if (this->modbus_switch != nullptr) {
-    this->modbus_switch.get()->publish_state(value);
-  }
   return result;
 }
 // ModbusBinarySensor End

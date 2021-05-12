@@ -140,6 +140,18 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
     - S_QWORD_R (sigend float from 4 registers low word first )    
 
 
+modbus defines serveral register types and function codes to access them. 
+The following function codes are implemented
+
+    - "read_coils": Function 01 (01hex) Read Coils - Reads the ON/OFF status of discrete coils in the slave.
+    - "read_discrete_inputs": Function 02(02hex) - Reads the ON/OFF status of discrete inputs in the slave.
+    - "read_holding_registers": Function 03 (03hex) Read Holding Registers - Read the binary contents of holding registers in the slave.
+    - "read_input_registers": Function 04 (04hex) Read Input Registers - Read the binary contents of input registers in the slave.
+    - "write_single_coil": Function 05 (05hex) Write Single Coil - Writes a single coil to either ON or OFF.
+    - "write_single_register": Function 06 (06hex) Write Single Register - Writes a value into a single holding register.
+    - "write_multiple_coils": Function 15 (0Fhex) Write Multiple Coils - Writes each coil in a sequence of coils to either ON or OFF.
+    - "write_multiple_registers": Function 16 (10hex) Write Multiple Registers - Writes values into a sequence of holding registers
+
 #### modbus component:
 
 
@@ -154,43 +166,15 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
+    - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.
   - bitmask: some values are packed in a response. The bitmask can be used to extract a value from the response.  For example, the high byte value register 0x9013 contains the minute value of the current time. To only extract this value use bitmask: 0xFF00.  The result will be automatically right shifted by the number of 0 before the first 1 in the bitmask.  For 0xFF00 (0b1111111100000000) the result is shifted 8 positions.  More than one sensor can use the same address/offset if the bitmask is different.
 
 #### binarysensor
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
   - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
+    - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.  
   - bitmask: some values are packed in a response. The bitmask is used to determined if the result is true or false
-  - create_switch: if this is a coil register setting this to true dynamically creates a modbus_switch component with the same name and sets the binarysensor to internal. Whenever the sensor reads a new value the state is synced with the switch component and vice versa (something like a binarysensorswitch)
-  It is a shortcut for archiving this: 
-
-  ````yaml
-      binary_sensors:
-      - id: force_load
-        modbus_functioncode: read_coils
-        address: 6
-        offset: 0
-        name: "Force Load on/off"
-        internal: true 
-        bitmask: 1
-        on_state:
-          if:
-            condition:
-              binary_sensor.is_on: force_load
-            then: 
-              - switch.turn_on: force_load_switch
-            else:
-              - switch.turn_off: force_load_switch
-
-    switches:
-      - id: force_load_switch
-        modbus_functioncode: write_single_coil
-        address: 6
-        offset: 0
-        name: "Force load on"
-        bitmask: 1
-  ````
-
 
 
 #### text sensor:
@@ -205,9 +189,34 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
 #### switch
   - modbus_functioncode: type of register
   - address: start address of the first register in a range
+  - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address. 
+    - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.  
   - bitmask: applied before sending the value to the controller
 
-See the MODBUS Specification: https://www.developpez.net/forums/attachments/p196506d1451307310/systemes/autres-systemes/automation/probleme-com-modbus-pl7-pro/controllerprotocolv2.3.pdf/ for details about the registers
+modbus_switch works like modbus_binarysensor. modbus_functioncode should be the code to read the value from the slave. The write command will be created based on the register type. 
+To define a switch for a coil function code should be "read_coils". The command to change the setting will then be write_single_coil
+Example
+
+````yaml
+switch:
+  - platform: modbus_controller
+    modbuscomponent_id: epever
+    id: enable_load_test
+    modbus_functioncode: read_coils
+    address: 2
+    offset: 3
+    name: "enable load test mode"
+    bitmask: 1
+````
+
+Since offset is not zero the read command is part of a range and will be parseed when the range is updated. 
+The write command to be constructed uses the function code to determine the write command. For a coil it is "write single coil".
+Because the write command only touches one register start_address and offset need to be adjusted. 
+The final command will be write_single_coil address 5 (start_address+offset) value 1 or 0 
+
+For holding registers the write command will be "write_single_register". Because the offset for holding registers is given in bytes and the size of a register is 16 bytes the start_address is calculated as start_address + offset/2
+
+
 
 ## TIP
 Write support is only implemented for switches.
@@ -407,6 +416,10 @@ H   0x12 (18)  : byte count
 C   0x2f (47)  : crc
 C   0x31 (49)  : crc
 ````
+
+API 
+===
+There are no automation methods defined. To help creating lambdas that can write data to the slave the internal API of this component can be used 
 
 
 High Level Code Structure

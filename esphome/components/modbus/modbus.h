@@ -35,6 +35,8 @@ class Modbus : public uart::UARTDevice, public Component {
   void send_words(uint8_t address, uint8_t function, uint16_t start_address, uint16_t register_count,
              const uint16_t *payload = nullptr);
 
+  void send_raw(const std::vector<uint8_t> &payload ); 
+
   /** RX,TX Control pin Ref: https://github.com/greays/esphome/blob/master/esphome/components/rs485/rs485.h */
   void set_ctrl_pin(uint8_t ctrl_pin) {
     static GPIOPin PIN(ctrl_pin, OUTPUT);
@@ -50,6 +52,8 @@ class Modbus : public uart::UARTDevice, public Component {
   GPIOPin *ctrl_pin_{nullptr};
 };
 
+
+// Wrap modbus class and add on_data event
 class ModbusDevice {
  public:
   void set_parent(Modbus *parent) { parent_ = parent; }
@@ -60,6 +64,10 @@ class ModbusDevice {
   void send(uint8_t function_code, uint16_t start_address, uint16_t num_values,uint8_t payload_len = 0, const uint8_t *payload = nullptr) {
     this->parent_->send(this->address_, function_code, start_address, num_values, payload_len, payload);
   }
+  // write raw data - only CRC is automatically calculated
+  void send_raw(const std::vector<uint8_t> &payload ) {
+    this->parent_->send_raw(payload);
+  }
 
  protected:
   friend Modbus;
@@ -67,6 +75,8 @@ class ModbusDevice {
   Modbus *parent_;
   uint8_t address_;
 };
+
+
 
 }  // namespace modbus
 }  // namespace esphome
