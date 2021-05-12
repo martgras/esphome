@@ -10,11 +10,11 @@
 namespace esphome {
 namespace modbus_controller {
 
-class ModbusDevice : public uart::UARTDevice, public PollingComponent {
+class ModbusBase : public uart::UARTDevice, public PollingComponent {
  public:
   static const bool RX_ENABLE = false;
   static const bool TX_ENABLE = true;
-  ModbusDevice() = default;
+  ModbusBase() = default;
 
   void setup() override {
     if (this->ctrl_pin_) {
@@ -26,7 +26,7 @@ class ModbusDevice : public uart::UARTDevice, public PollingComponent {
   void read_uart();
   void dump_config() override;
 
-  void register_device(ModbusDevice *device) { this->devices_.push_back(device); }
+  void register_device(ModbusBase *device) { this->devices_.push_back(device); }
 
   float get_setup_priority() const override;
 
@@ -46,7 +46,7 @@ class ModbusDevice : public uart::UARTDevice, public PollingComponent {
 
   std::vector<uint8_t> rx_buffer_;
   uint32_t last_modbus_byte_{0};
-  std::vector<ModbusDevice *> devices_;
+  std::vector<ModbusBase *> devices_;
   GPIOPin *ctrl_pin_{nullptr};
 
  public:
