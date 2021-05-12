@@ -1,4 +1,4 @@
-#include "modbus_base.h"
+#include "modbusbase.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -7,7 +7,7 @@ namespace modbus_controller {
 static const char *TAG = "modbus_base";
 
 // read any new data from uart
-void ModbusDevice::read_uart() {
+void ModbusBase::read_uart() {
   const uint32_t now = millis();
   if (now - this->last_modbus_byte_ > 50) {
     this->rx_buffer_.clear();
@@ -41,7 +41,7 @@ uint16_t crc16(const uint8_t *data, uint8_t len) {
   return crc;
 }
 
-bool ModbusDevice::parse_modbus_byte_(uint8_t byte) {
+bool ModbusBase::parse_modbus_byte_(uint8_t byte) {
   size_t at = this->rx_buffer_.size();
   this->rx_buffer_.push_back(byte);
   const uint8_t *raw = &this->rx_buffer_[0];
@@ -113,12 +113,12 @@ bool ModbusDevice::parse_modbus_byte_(uint8_t byte) {
   return false;
 }
 
-void ModbusDevice::dump_config() {
+void ModbusBase::dump_config() {
   ESP_LOGCONFIG(TAG, "Modbus:");
   if (ctrl_pin_)
     LOG_PIN("Ctrl Pin: ", ctrl_pin_);
 }
-float ModbusDevice::get_setup_priority() const {
+float ModbusBase::get_setup_priority() const {
   // After UART bus
   return setup_priority::BUS - 1.0f;
 }
@@ -137,8 +137,8 @@ uint16_t update_crc16(uint16_t crc, uint8_t byte) {
   return crc;
 }
 
-void ModbusDevice::send(uint8_t address, uint8_t function_code, uint16_t start_address, uint16_t number_of_entities,
-                        uint8_t payload_len, const uint8_t *payload) {
+void ModbusBase::send(uint8_t address, uint8_t function_code, uint16_t start_address, uint16_t number_of_entities,
+                      uint8_t payload_len, const uint8_t *payload) {
   static const size_t MAX_VALUES = 128;
 
 #if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
@@ -220,7 +220,7 @@ void ModbusDevice::send(uint8_t address, uint8_t function_code, uint16_t start_a
 }
 
 // Send raw command. Except CRC everything must be contained in payload
-void ModbusDevice::send_raw(const std::vector<uint8_t> &payload) {
+void ModbusBase::send_raw(const std::vector<uint8_t> &payload) {
   if (payload.size() == 0) {
     return;
   }

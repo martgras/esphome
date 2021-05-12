@@ -326,4 +326,5 @@ def new_modbus_switch(config):
 @coroutine
 def register_modbus_device(var, config):
     cg.add(var.set_address(config[CONF_ADDRESS]))
+    cg.add(var.set_ctrl_pin(config[CONF_CTRL_PIN]))
     yield uart.register_uart_device(var, config)

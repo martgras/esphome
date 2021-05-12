@@ -7,13 +7,9 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
-#include "modbus_base.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/core/automation.h"
-#ifdef USE_MQTT
-#include "esphome/components/mqtt/mqtt_component.h"
-#include "esphome/components/mqtt/mqtt_switch.h"
-#endif
+#include "modbusbase.h"
 
 #include <string>
 #include <map>
@@ -223,9 +219,9 @@ struct ModbusCommandItem {
   static ModbusCommandItem create_custom_command(ModbusController *modbusdevice, const std::vector<uint8_t> &values);
 };
 
-class ModbusController : public ModbusDevice {
+class ModbusController : public ModbusBase {
  public:
-  ModbusController(uint16_t throttle = 0) : ModbusDevice(), command_throttle_(throttle){};
+  ModbusController(uint16_t throttle = 0) : ModbusBase(), command_throttle_(throttle){};
   size_t create_register_ranges();
 
   bool remove_register_range(uint16_t start_address);
