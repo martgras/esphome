@@ -1,8 +1,9 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome import pins
 from esphome.components import (
     sensor as core_sensor,
-    modbus,
+    uart,
     binary_sensor as core_binary_sensor,
     text_sensor as core_text_sensor,
     switch as core_switch,
@@ -18,7 +19,6 @@ from esphome.const import (
 )
 
 from .const import (
-    CONF_MODBUSDEVICE_ADDRESS,
     CONF_VALUE_TYPE,
     CONF_REGISTER_COUNT,
     CONF_MODBUS_FUNCTIONCODE,
@@ -32,7 +32,7 @@ from .const import (
 CODEOWNERS = ["@martgras"]
 
 AUTO_LOAD = [
-    "modbus",
+    "uart",
     "sensor",
     "binary_sensor",
     "text_sensor",
@@ -44,8 +44,11 @@ AUTO_LOAD = [
 # pylint: disable=invalid-name
 modbus_controller_ns = cg.esphome_ns.namespace("modbus_controller")
 ModbusController = modbus_controller_ns.class_(
-    "ModbusController", cg.PollingComponent, modbus.ModbusDevice
+    "ModbusController", cg.PollingComponent, uart.UARTDevice
 )
+
+ModbusDevice = modbus_controller_ns.class_("ModbusDevice")
+
 
 ModbusSwitch = modbus_controller_ns.class_(
     "ModbusSwitch", core_switch.Switch, cg.Component
@@ -140,10 +143,15 @@ text_sensor_entry = core_text_sensor.TEXT_SENSOR_SCHEMA.extend(
 ).extend(cv.COMPONENT_SCHEMA)
 
 
+CONF_MODBUS_ID = "modbus_id"
+CONF_CTRL_PIN = "ctrl_pin"
+
 MODBUS_CONFIG_SCHEMA = (
     cv.Schema(
         {
-            cv.Optional(CONF_MODBUSDEVICE_ADDRESS, default=0x1): cv.hex_uint8_t,
+            cv.GenerateID(): cv.declare_id(ModbusController),
+            cv.Optional(CONF_CTRL_PIN): pins.output_pin,
+            cv.Optional(CONF_ADDRESS, default=0x1): cv.hex_uint8_t,
             cv.Optional(
                 CONF_COMMAND_THROTTLE, default="0ms"
             ): cv.positive_time_period_milliseconds,
@@ -162,7 +170,7 @@ MODBUS_CONFIG_SCHEMA = (
         }
     )
     .extend(cv.polling_component_schema("60s"))
-    .extend(modbus.modbus_device_schema(0x01))
+    .extend(uart.UART_DEVICE_SCHEMA)
 )
 
 
@@ -170,7 +178,9 @@ def modbus_controller_schema(device_address=0x1):
     return (
         cv.Schema(
             {
-                cv.Optional(CONF_MODBUSDEVICE_ADDRESS, default=0x1): cv.hex_uint8_t,
+                cv.GenerateID(): cv.declare_id(ModbusController),
+                cv.Optional(CONF_CTRL_PIN): pins.output_pin,
+                cv.Optional(CONF_ADDRESS, default=0x1): cv.hex_uint8_t,
                 cv.Optional(CONF_COMMAND_THROTTLE, default=0x0500): cv.hex_uint16_t,
                 cv.Optional("sensors"): cv.All(
                     cv.ensure_list(sensor_entry), cv.Length(min=0)
@@ -187,7 +197,7 @@ def modbus_controller_schema(device_address=0x1):
             }
         )
         .extend(cv.polling_component_schema("60s"))
-        .extend(modbus.modbus_device_schema(device_address))
+        .extend(uart.UART_DEVICE_SCHEMA)
     )
 
 
@@ -200,7 +210,7 @@ CONFIG_SCHEMA = (
         }
     )
     .extend(cv.polling_component_schema("60s"))
-    .extend(modbus.modbus_device_schema(0x01))
+    .extend(uart.UART_DEVICE_SCHEMA)
 )
 
 
@@ -208,7 +218,7 @@ def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID], config[CONF_COMMAND_THROTTLE])
     yield cg.add(var.set_command_throttle(config[CONF_COMMAND_THROTTLE]))
     yield cg.register_component(var, config)
-    yield modbus.register_modbus_device(var, config)
+    yield register_modbus_device(var, config)
     if config.get("sensors"):
         conf = config["sensors"]
         for cfg in conf:
@@ -311,3 +321,9 @@ def new_modbus_switch(config):
     yield cg.register_component(var, config)
     yield core_switch.register_switch(var, config)
     yield var
+
+
+@coroutine
+def register_modbus_device(var, config):
+    cg.add(var.set_address(config[CONF_ADDRESS]))
+    yield uart.register_uart_device(var, config)

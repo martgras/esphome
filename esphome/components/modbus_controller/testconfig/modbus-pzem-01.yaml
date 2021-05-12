@@ -45,18 +45,14 @@ uart:
   baud_rate: 9600
   stop_bits: 2
 
-modbus:
-  id: modbus_epsolar
-  #  ctrl_pin: 26
-  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
-  uart_id: mod_bus
-
 modbus_controller:
-  modbus_id: modbus_epsolar
   command_throttle: 0ms
   id: pzem01
   ## the Modbus device addr
   address: 0x1
+  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+
   sensors:
     - id: voltage
       name: "voltage"

@@ -290,7 +290,7 @@ void ModbusController::loop() {
       process_modbus_data(message);
       incoming_data.pop();
   */
-
+  read_uart();
   if (!incoming_queue_.empty()) {
     auto &message = incoming_queue_.front();
     if (message != nullptr)
