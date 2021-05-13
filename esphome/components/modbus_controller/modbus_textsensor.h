@@ -31,18 +31,17 @@ class ModbusTextSensor : public Component, public text_sensor::TextSensor, publi
                    uint16_t response_bytes, RawEncoding encode, uint8_t skip_updates)
       : ModbusTextSensor("", register_type, address, offset, register_count, response_bytes, encode, skip_updates) {}
   float parse_and_publish(const std::vector<uint8_t> &data) override;
-  virtual void log() override;
+  void log() override;
   void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
                          uint8_t offset, uint8_t register_count, uint16_t response_bytes, RawEncoding encode,
                          uint8_t skip_updates);
   std::string const &get_sensorname() override { return this->get_name(); };
   void update(){};
-  void set_state(bool state) { this->state = state; }
   void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
   uint16_t response_bytes_;
   RawEncoding encode;
 
- private:
+ protected:
   ModbusController *parent_{nullptr};
 };
 

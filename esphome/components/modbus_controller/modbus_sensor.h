@@ -29,7 +29,7 @@ class ModbusSensor : public Component, public sensor::Sensor, public SensorItem 
   void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
   float parse_and_publish(const std::vector<uint8_t> &data) override;
 
-  virtual void log() override;
+  void log() override;
   std::string const &get_sensorname() override { return this->get_name(); };
 
   void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
