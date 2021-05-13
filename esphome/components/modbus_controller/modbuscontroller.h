@@ -73,7 +73,7 @@ struct RegisterRange {
 // All sensors are stored in a map
 // to enable binary sensors for values encoded as bits in the same register the key of each sensor
 // the key is a 64 bit integer that combines the register properties
-// sensormap is sorted by this key. The key ensures the correct order when creating consequtive ranges
+// sensormap_ is sorted by this key. The key ensures the correct order when creating consequtive ranges
 // Format:  function_code (8 bit) | start address (16 bit)| offset (8bit)| bitmask (32 bit)
 inline uint64_t calc_key(ModbusFunctionCode function_code, uint16_t start_address, uint8_t offset = 0,
                          uint32_t bitmask = 0) {
@@ -164,7 +164,6 @@ struct SensorItem {
         size = 2;
         break;
       case SensorValueType::S_DWORD:
-        size = 4;
         size = register_count;
         break;
       case SensorValueType::BIT:
@@ -238,13 +237,13 @@ class ModbusController : public ModbusBase {
   void set_command_throttle(uint16_t command_throttle) { this->command_throttle_ = command_throttle; }
 
   void queue_command(const ModbusCommandItem &command);
-  void add_sensor_item(SensorItem *item) { sensormap[item->getkey()] = item; }
+  void add_sensor_item(SensorItem *item) { sensormap_[item->getkey()] = item; }
 
  protected:
   bool send_next_command_();
   // Collection of all sensors for this component
   // see calc_key how the key is contructed
-  std::map<uint64_t, SensorItem *> sensormap;
+  std::map<uint64_t, SensorItem *> sensormap_;
   // Continous range of modbus registers
   std::vector<RegisterRange> register_ranges_;
   // Hold the pending requests to be sent
@@ -252,7 +251,7 @@ class ModbusController : public ModbusBase {
   std::queue<std::unique_ptr<ModbusCommandItem>> incoming_queue_;
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
-  static std::atomic_bool sending_;
+  static std::atomic_bool sending;
 };
 
 }  // namespace modbus_controller

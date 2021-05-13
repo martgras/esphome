@@ -1,12 +1,12 @@
 # Modbus controller component
 
-## A fork of [esphome](https://github.com/esphome/esphome) adding support for monitoring a modbus slave
+## A fork of [esphome](https://github.com/esphome/esphome) adding support for monitoring a modbus device
 
 Initially I created this component only for the EPEVER Trace solar controller (You can find that implementation in the epever branch here. )
 Since alot of my code was already pretty generic I decided to create a general modbus component instead.
 
 Modbus_controller suppors sensors, binary_sensors, text_sensors and switches
-Custom command can be sent to the slave using lambdas.
+Custom command can be sent to the device using lambdas.
 
 
 Tested using an EPEVER Tracer2210AN MPPT controller,Heidelberg Wallbox and PZEM-017
@@ -188,10 +188,10 @@ modbus_sensor_schema extends the sensors schema and adds these parameters:
 modbus defines serveral register types and function codes to access them.
 The following function codes are implemented
 
-    - "read_coils": Function 01 (01hex) Read Coils - Reads the ON/OFF status of discrete coils in the slave.
-    - "read_discrete_inputs": Function 02(02hex) - Reads the ON/OFF status of discrete inputs in the slave.
-    - "read_holding_registers": Function 03 (03hex) Read Holding Registers - Read the binary contents of holding registers in the slave.
-    - "read_input_registers": Function 04 (04hex) Read Input Registers - Read the binary contents of input registers in the slave.
+    - "read_coils": Function 01 (01hex) Read Coils - Reads the ON/OFF status of discrete coils in the device.
+    - "read_discrete_inputs": Function 02(02hex) - Reads the ON/OFF status of discrete inputs in the device.
+    - "read_holding_registers": Function 03 (03hex) Read Holding Registers - Read the binary contents of holding registers in the device.
+    - "read_input_registers": Function 04 (04hex) Read Input Registers - Read the binary contents of input registers in the device.
     - "write_single_coil": Function 05 (05hex) Write Single Coil - Writes a single coil to either ON or OFF.
     - "write_single_register": Function 06 (06hex) Write Single Register - Writes a value into a single holding register.
     - "write_multiple_coils": Function 15 (0Fhex) Write Multiple Coils - Writes each coil in a sequence of coils to either ON or OFF.
@@ -202,9 +202,9 @@ The following function codes are implemented
 
   - platform: modbus_controller
   - cmodbus_id: id of the modbus hub
-  - command_throttle:  milliseconds between 2 requests to the slave. Some slaves limit the rate of requests they can handle (e.g. only 1 request/s).
+  - command_throttle:  milliseconds between 2 requests to the device. Some devices limit the rate of requests they can handle (e.g. only 1 request/s).
   - id: component id
-  - address: modbus slave address
+  - address: modbus device address
 
 
 #### sensor
@@ -241,7 +241,7 @@ The following function codes are implemented
     - for coil or discrete input registers offset is the position of the coil/register because these registers encode 8 coils in one byte.
   - bitmask: applied before sending the value to the controller
 
-modbus_switch works like modbus_binarysensor. modbus_functioncode should be the code to read the value from the slave. The write command will be created based on the function code.
+modbus_switch works like modbus_binarysensor. modbus_functioncode should be the code to read the value from the device. The write command will be created based on the function code.
 To define a switch for a coil function code should be "read_coils". The command to change the setting will then be write_single_coil
 Example
 
@@ -420,7 +420,7 @@ The response is mapped to the sensor based on register_count and offset in bytes
 
 Request
 ````
-0x1  (01)  : slave address
+0x1  (01)  : device address
 0x4  (04)  : function code 4 (Read Input Registers)
 0x30 (48)  : start address high byte
 0x0  (00)  : start address low byte
@@ -432,7 +432,7 @@ Request
 
 Response:
 ````
-H   0x1  (01)  : slave address
+H   0x1  (01)  : device address
 H   0x4  (04)  : function code
 H   0x12 (18)  : byte count
 ---------------------------

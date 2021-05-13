@@ -42,18 +42,18 @@ void ModbusController::setup() { this->create_register_ranges(); }
 bool ModbusController::send_next_command_() {
   uint32_t last_send = millis() - this->last_command_timestamp_;
 
-  if (sending_ && last_send > 500) {
-    sending_ = false;  // Clear send flag afer 0.5s
+  if (sending && last_send > 500) {
+    sending = false;  // Clear send flag afer 0.5s
   }
-  if (!sending_ && (last_send > this->command_throttle_) && !command_queue_.empty()) {
-    this->sending_ = true;
+  if (!sending && (last_send > this->command_throttle_) && !command_queue_.empty()) {
+    this->sending = true;
     auto &command = command_queue_.front();
     ESP_LOGD(TAG, "Sending next modbus command %u %u", last_send, this->command_throttle_);
     command->send();
     this->last_command_timestamp_ = millis();
     if (!command->on_data_func) {  // No handler remove from queue directly after sending
       command_queue_.pop_front();
-      this->sending_ = false;
+      this->sending = false;
     }
   }
   return (!command_queue_.empty());
@@ -67,7 +67,7 @@ void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
     current_command->payload = std::move(data);
     this->incoming_queue_.push(std::move(current_command));
     ESP_LOGD(TAG, "Modbus respone queued");
-    this->sending_ = false;
+    this->sending = false;
     command_queue_.pop_front();
   }
 }
@@ -81,7 +81,7 @@ void ModbusController::process_modbus_data(const ModbusCommandItem *response) {
 
 void ModbusController::on_modbus_error(uint8_t function_code, uint8_t exception_code) {
   ESP_LOGE(TAG, "Modbus error function code: 0x%X exception: %d ", function_code, exception_code);
-  this->sending_ = false;
+  this->sending = false;
   // Remove pending command waiting for a response
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
@@ -107,13 +107,13 @@ void ModbusController::on_register_data(ModbusFunctionCode function_code, uint16
     ESP_LOGE(TAG, "Handle incoming data : No matching range for sensor found - start_address :  0x%X", start_address);
     return;
   }
-  auto map_it = sensormap.find(vec_it->first_sensorkey);
-  if (map_it == sensormap.end()) {
+  auto map_it = sensormap_.find(vec_it->first_sensorkey);
+  if (map_it == sensormap_.end()) {
     ESP_LOGE(TAG, "Handle incoming data : No sensor found in at start_address :  0x%X", start_address);
     return;
   }
   // loop through all sensors with the same start address
-  while (map_it != sensormap.end() && map_it->second->start_address == start_address) {
+  while (map_it != sensormap_.end() && map_it->second->start_address == start_address) {
     if (map_it->second->register_type == function_code) {
       float val = map_it->second->parse_and_publish(data);
       ESP_LOGV(TAG, "Sensor : %s = %.02f ", map_it->second->get_sensorname().c_str(), val);
@@ -172,14 +172,14 @@ size_t ModbusController::create_register_ranges() {
   register_ranges_.clear();
   uint8_t n = 0;
   // map is already sorted by keys so we start with the lowest address ;
-  auto ix = sensormap.begin();
+  auto ix = sensormap_.begin();
   auto prev = ix;
   uint16_t current_start_address = ix->second->start_address;
   uint8_t buffer_offset = ix->second->offset;
   uint8_t skip_updates = ix->second->skip_updates;
   auto first_sensorkey = ix->second->getkey();
   int total_register_count = 0;
-  while (ix != sensormap.end()) {
+  while (ix != sensormap_.end()) {
     // use the lowest non zero value for the whole range
     // Because zero is the default value for skip_updates it is excluded from getting the min value.
     ESP_LOGV(TAG, "Register '%s': 0x%X %d %d  0x%llx (%d) buffer_offset = %d (0x%X) skip=%u",
@@ -250,7 +250,7 @@ size_t ModbusController::create_register_ranges() {
 void ModbusController::dump_config() {
   ESP_LOGCONFIG(TAG, "EPSOLAR:");
   ESP_LOGCONFIG(TAG, "  Address: 0x%02X", this->address_);
-  for (auto &item : this->sensormap) {
+  for (auto &item : this->sensormap_) {
     item.second->log();
   }
   create_register_ranges();
@@ -283,7 +283,7 @@ void ModbusController::on_write_register_response(ModbusFunctionCode function_co
   ESP_LOGD(TAG, "Command ACK 0x%X %d ", get_data<uint16_t>(data, 0), get_data<int16_t>(data, 1));
 }
 
-std::atomic_bool ModbusController::sending_(false);
+std::atomic_bool ModbusController::sending(false);
 
 // factory methods
 ModbusCommandItem ModbusCommandItem::create_read_command(
