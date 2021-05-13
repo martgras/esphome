@@ -9,16 +9,14 @@ from esphome.components import (
     switch as core_switch,
 )
 from esphome.core import coroutine
-from esphome.util import Registry
-
 from esphome.const import (
     CONF_ID,
     CONF_ADDRESS,
     CONF_OFFSET,
     CONF_NAME,
 )
-
 from .const import (
+    CONF_CTRL_PIN,
     CONF_VALUE_TYPE,
     CONF_REGISTER_COUNT,
     CONF_MODBUS_FUNCTIONCODE,
@@ -46,9 +44,6 @@ modbus_controller_ns = cg.esphome_ns.namespace("modbus_controller")
 ModbusController = modbus_controller_ns.class_(
     "ModbusController", cg.PollingComponent, uart.UARTDevice
 )
-
-ModbusDevice = modbus_controller_ns.class_("ModbusDevice")
-
 
 ModbusSwitch = modbus_controller_ns.class_(
     "ModbusSwitch", core_switch.Switch, cg.Component
@@ -92,9 +87,6 @@ SENSOR_VALUE_TYPE = {
     "U_QWORD_R": SensorValueType.S_QWORD_R,
 }
 
-MODBUS_REGISTRY = Registry()
-validate_modbus_range = cv.validate_registry("sensors", MODBUS_REGISTRY)
-
 sensor_entry = core_sensor.SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSensor),
@@ -119,7 +111,7 @@ binary_sensor_entry = core_binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     }
 )
 
-modbus_switch_entry = core_switch.SWITCH_SCHEMA.extend(
+switch_entry = core_switch.SWITCH_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSwitch),
         cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
@@ -143,10 +135,7 @@ text_sensor_entry = core_text_sensor.TEXT_SENSOR_SCHEMA.extend(
 ).extend(cv.COMPONENT_SCHEMA)
 
 
-CONF_MODBUS_ID = "modbus_id"
-CONF_CTRL_PIN = "ctrl_pin"
-
-MODBUS_CONFIG_SCHEMA = (
+CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(ModbusController),
@@ -165,48 +154,8 @@ MODBUS_CONFIG_SCHEMA = (
                 cv.ensure_list(text_sensor_entry), cv.Length(min=0)
             ),
             cv.Optional("switches"): cv.All(
-                cv.ensure_list(modbus_switch_entry), cv.Length(min=0)
+                cv.ensure_list(switch_entry), cv.Length(min=0)
             ),
-        }
-    )
-    .extend(cv.polling_component_schema("60s"))
-    .extend(uart.UART_DEVICE_SCHEMA)
-)
-
-
-def modbus_controller_schema(device_address=0x1):
-    return (
-        cv.Schema(
-            {
-                cv.GenerateID(): cv.declare_id(ModbusController),
-                cv.Optional(CONF_CTRL_PIN): pins.output_pin,
-                cv.Optional(CONF_ADDRESS, default=0x1): cv.hex_uint8_t,
-                cv.Optional(CONF_COMMAND_THROTTLE, default=0x0500): cv.hex_uint16_t,
-                cv.Optional("sensors"): cv.All(
-                    cv.ensure_list(sensor_entry), cv.Length(min=0)
-                ),
-                cv.Optional("binary_sensors"): cv.All(
-                    cv.ensure_list(binary_sensor_entry), cv.Length(min=0)
-                ),
-                cv.Optional("text_sensors"): cv.All(
-                    cv.ensure_list(text_sensor_entry), cv.Length(min=0)
-                ),
-                cv.Optional("switches"): cv.All(
-                    cv.ensure_list(modbus_switch_entry), cv.Length(min=0)
-                ),
-            }
-        )
-        .extend(cv.polling_component_schema("60s"))
-        .extend(uart.UART_DEVICE_SCHEMA)
-    )
-
-
-ALLBITS = 0xFFFFFFFF
-
-CONFIG_SCHEMA = (
-    MODBUS_CONFIG_SCHEMA.extend(
-        {
-            cv.GenerateID(): cv.declare_id(ModbusController),
         }
     )
     .extend(cv.polling_component_schema("60s"))
@@ -278,11 +227,6 @@ def to_code(config):
                     cfg[CONF_BITMASK],
                 )
             )
-
-
-@coroutine
-def build_modbus_registers(config):
-    yield cg.build_registry_list(MODBUS_REGISTRY, config)
 
 
 @coroutine
