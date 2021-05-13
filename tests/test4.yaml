@@ -190,7 +190,7 @@ text_sensor:
     address: 0x9013
     offset: 0
     register_count: 3
-    hex_encode: true
+    raw_encode: COMMA
     response_size: 6
 
 
