@@ -1,0 +1,321 @@
+substitutions:
+  devicename: heidelberg_wb_example
+
+esphome:
+  name: $devicename
+  platform: ESP8266
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret wifi_sid
+  password: !secret wifi_password
+  use_address: espsolar
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "CET-1CEST,M3.5.0,M10.5.0/3"
+    servers: "192.168.66.45"
+
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+  password: !secret api_password
+
+ota:
+  password: !secret ota_password
+
+# Not required. The modbus_controller reads registers every 60 seconds.
+# Modbus Timeout must only be set >60000 ms.
+# Also set Standby Function Control to 0 for power savings. The Wallbox
+# wakes up if a car is connected.
+#
+# reset ModBus watchdog timer
+#interval:
+#  - interval: 10sec
+#    then:
+#      - lambda: |-
+#          uint16_t payload = 4; // must be verified
+#          ESP_LOGD("main", "set watchdog reset %d", payload);
+#          // Create a modbus command item with the max current value as the payload
+#          esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0102, payload);
+#          // Submit the command to the send queue
+#          heidelberg_wallbox_id01->queue_command(set_payload_command);
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal ${devicename}"
+    update_interval: 300s
+
+  - platform: homeassistant
+    entity_id: input_number.wb_max_current #Slider from HASS, create as Helper
+    id: wb_max_current
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            uint16_t payload = id(wb_max_current).state * 10;
+            ESP_LOGI("main", "set max current %d", payload);
+            // Create a modbus command item with the max current value as the payload
+            esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0105, payload);
+            // Submit the command to the send queue
+            heidelberg_wallbox_id01->queue_command(set_payload_command);
+
+  - platform: homeassistant
+    entity_id: input_number.wb_watchdog_timeout
+    id: wb_watchdog_timeout
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            uint16_t payload = id(wb_watchdog_timeout).state;
+            ESP_LOGI("main", "set watchdog_timeout %d", payload);
+            esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0101, payload);
+            heidelberg_wallbox_id01->queue_command(set_payload_command);
+
+  - platform: homeassistant
+    entity_id: input_number.wb_max_failsafe_current
+    id: wb_max_failssafe_current
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            uint16_t payload = id(wb_max_failssafe_current).state * 10;
+            ESP_LOGI("main", "set max failssafe current %d", payload);
+            esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0106, payload);
+            heidelberg_wallbox_id01->queue_command(set_payload_command);
+
+binary_sensor:
+  - platform: homeassistant
+    entity_id: input_boolean.wb_remote_lock
+    id: wb_remote_lock
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            uint16_t payload = 1;
+            if ( id(wb_remote_lock).state == true ) {
+              payload = 0;
+            }
+            ESP_LOGI("main", "set remote lock %d", payload);
+            esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0103, payload);
+            heidelberg_wallbox_id01->queue_command(set_payload_command);
+
+  - platform: homeassistant
+    entity_id: input_boolean.wb_standby_control
+    id: wb_standby_control
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            uint16_t payload = 4;
+            if ( id(wb_standby_control).state == true ) {
+              payload = 0;
+            }
+            ESP_LOGI("main", "set standby control %d", payload);
+            esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0102, payload);
+            heidelberg_wallbox_id01->queue_command(set_payload_command);
+
+uart:
+  id: mod_bus
+  tx_pin: 5
+  rx_pin: 2
+  baud_rate: 19200
+  stop_bits: 1
+  parity: even
+
+modbus_controller:
+  command_throttle: 0ms #100ms
+  id: heidelberg_wallbox_id01
+  # Modbus device addr
+  address: 0x1
+  ctrl_pin: 4 # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+
+  sensors:
+    - id: version
+      name: "Version"
+      address: 0x0004
+      offset: 0
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+
+    - id: charg_state
+      name: "charging state"
+      address: 0x0004
+      offset: 2
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+
+    - id: l1_a_rms
+      name: "L1 A rms"
+      address: 0x0004
+      offset: 4
+      unit_of_measurement: "A rms"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+
+    - id: l2_a_rms
+      name: "L2 A rms"
+      address: 0x0004
+      offset: 6
+      unit_of_measurement: "A rms"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+
+    - id: l3_a_rms
+      name: "L3 A rms"
+      address: 0x0004
+      offset: 8
+      unit_of_measurement: "A rms"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+
+    - id: pcb_temp
+      name: "PCB-Temperatur"
+      address: 0x0004
+      offset: 10
+      unit_of_measurement: "°C"
+      modbus_functioncode: "read_input_registers"
+      value_type: S_WORD
+      skip_updates: 300
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.1
+
+    - id: l1_v_rms
+      name: "L1 V rms"
+      address: 0x0004
+      offset: 12
+      unit_of_measurement: "V rms"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      skip_updates: 60
+      accuracy_decimals: 0
+
+    - id: l2_v_rms
+      name: "L2 V rms"
+      address: 0x0004
+      offset: 14
+      unit_of_measurement: "V rms"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      skip_updates: 60
+      accuracy_decimals: 0
+
+    - id: l3_v_rms
+      name: "L3 V rms"
+      address: 0x0004
+      offset: 16
+      unit_of_measurement: "V rms"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 0
+
+    - id: extern_lock_state
+      name: "extern lock state"
+      address: 0x0004
+      offset: 18
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+
+    - id: l1_l2_l3_power
+      name: "L1 L2 L3 Power"
+      address: 0x0004
+      offset: 20
+      unit_of_measurement: "W"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 0
+
+    - id: kwh_power_on
+      name: "KWH Power On"
+      address: 0x0004
+      register_count: 2
+      offset: 22
+      unit_of_measurement: "kWh"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_DWORD
+      accuracy_decimals: 3
+      filters:
+        - multiply: 0.001
+
+    - id: kwh_total
+      name: "KWH Total"
+      address: 0x0004
+      register_count: 2
+      offset: 26
+      unit_of_measurement: "kWh"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_DWORD
+      accuracy_decimals: 3
+      filters:
+        - multiply: 0.001
+
+    - id: fix_max_current
+      name: "fix max current"
+      address: 0x0064
+      offset: 0
+      unit_of_measurement: "A"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 0
+
+    - id: fix_min_current
+      name: "fix min current"
+      address: 0x0064
+      offset: 2
+      unit_of_measurement: "A"
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 0
+
+    - id: watchdog
+      name: "watchdog"
+      address: 0x0101
+      offset: 0
+      unit_of_measurement: "ms"
+      modbus_functioncode: "read_holding_registers"
+      value_type: U_WORD
+
+    - id: stand_by_control
+      name: "stand by control"
+      address: 0x0101
+      offset: 2
+      modbus_functioncode: "read_holding_registers"
+      value_type: U_WORD
+
+    - id: remote_lock
+      name: "remote_lock"
+      address: 0x0101
+      offset: 4
+      modbus_functioncode: "read_holding_registers"
+      value_type: U_WORD
+
+    - id: max_current
+      name: "max current"
+      address: 0x0105
+      offset: 0
+      unit_of_measurement: "A"
+      modbus_functioncode: "read_holding_registers"
+      value_type: U_WORD
+      accuracy_decimals: 0
+      filters:
+        - multiply: 0.1
+
+    - id: failsafe_current
+      name: "failsafe current"
+      address: 0x0105
+      offset: 2
+      unit_of_measurement: "A"
+      modbus_functioncode: "read_holding_registers"
+      value_type: U_WORD
+      accuracy_decimals: 0
+      filters:
+        - multiply: 0.1

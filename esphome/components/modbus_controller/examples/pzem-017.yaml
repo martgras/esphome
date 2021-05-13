@@ -1,0 +1,152 @@
+esphome:
+  name: pzdc
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: !secret wifi_sid
+  password: !secret wifi_password
+  use_address: pzdc.int.grasruck.net
+#  manual_ip:
+#    static_ip: 192.168.66.89
+#    gateway: 192.168.66.1
+#    subnet: 255.255.255.0
+#    dns1: 192.168.66.9
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "CET-1CEST,M3.5.0,M10.5.0/3"
+    servers: "192.168.66.45"
+
+# Enable logging
+logger:
+  level: VERBOSE
+
+# Enable Home Assistant API
+api:
+  password: !secret api_password
+
+ota:
+  password: !secret ota_password
+
+mqtt:
+  broker: 192.168.66.114
+#  on_message:
+#    topic: ${unique_id}/ota_mode
+#    payload: 'ON'
+#    then:
+#      - deep_sleep.prevent: deep_sleep_1
+
+uart:
+  id: mod_bus
+  tx_pin: 25
+  rx_pin: 27
+  baud_rate: 9600
+  stop_bits: 2
+
+modbus_controller:
+  command_throttle: 0ms
+  id: pzem017
+  ## the Modbus device addr
+  address: 0x1
+  # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
+  uart_id: mod_bus
+
+  sensors:
+    - id: voltage
+      name: "voltage"
+      address: 0x0000
+      offset: 0
+      unit_of_measurement: "V" ## for any other unit the value is returned in minutes
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.01
+
+    - id: current
+      name: "current"
+      address: 0x0000
+      offset: 2
+      unit_of_measurement: "A" ## for any other unit the value is returned in minutes
+      modbus_functioncode: "read_input_registers"
+      value_type: U_WORD
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.01
+
+    - id: power
+      name: "power"
+      address: 0x0000
+      register_count: 2 ## low in reg. 2 and hi in reg 3
+      offset: 4
+      unit_of_measurement: "W" ## for any other unit the value is returned in minutes
+      modbus_functioncode: "read_input_registers"
+      value_type: U_DWORD_R
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.01
+
+    - id: energy
+      name: "energy"
+      address: 0x0000
+      register_count: 2 ## low in reg. 2 and hi in reg 3
+      offset: 8
+      unit_of_measurement: "Wh" ## for any other unit the value is returned in minutes
+      modbus_functioncode: "read_input_registers"
+      value_type: U_DWORD_R
+      accuracy_decimals: 0
+
+    - id: high_voltage_alarm_threshold
+      address: 0x0000
+      offset: 0
+      unit_of_measurement: "V"
+      name: "high_voltage_alarm threshold"
+      modbus_functioncode: read_holding_registers
+      value_type: U_WORD
+      filters:
+        - multiply: 0.01
+
+    - id: low_voltage_alarm_threshold
+      address: 0x0000
+      offset: 2
+      unit_of_measurement: "V"
+      name: "low_voltage_alarm threshold"
+      modbus_functioncode: read_holding_registers
+      value_type: U_WORD
+      filters:
+        - multiply: 0.01
+
+    - id: modbus_rtu_address
+      address: 0x0000
+      offset: 4
+      unit_of_measurement: ""
+      name: "modbus rtu address"
+      modbus_functioncode: read_holding_registers
+      value_type: U_WORD
+
+    - id: current_range
+      address: 0x0000
+      offset: 6
+      unit_of_measurement: "A"
+      name: "current range"
+      modbus_functioncode: read_holding_registers
+      value_type: U_WORD
+      filters:
+        - lambda: if (x == 0.0) return 100.0; else if (x == 1.0) return 50.0; else return x * 100.0;
+
+  binary_sensors:
+    - id: high_voltage_alarm
+      name: "high voltage alert"
+      address: 0x0000
+      offset: 12
+      bitmask: 0xFFFF
+      modbus_functioncode: "read_input_registers"
+
+    - id: low_voltage_alarm
+      name: "low voltage alert"
+      address: 0x0000
+      bitmask: 0xFFFF
+      offset: 14
+      modbus_functioncode: "read_input_registers"

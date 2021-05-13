@@ -56,6 +56,10 @@ time:
 tuya:
   time_id: sntp_time
 
+modbus_controller:
+  id: modbus_test
+  address: 0x1
+
 sensor:
   - platform: homeassistant
     entity_id: sensor.hello_world
@@ -63,6 +67,13 @@ sensor:
   - platform: tuya
     id: tuya_sensor
     sensor_datapoint: 1
+  - platform: modbus_controller
+    id: rated_current_of_load
+    name: "rated_current_of_load"
+    address: 0x300E
+    offset: 0
+    modbus_functioncode: "read_input_registers"
+    value_type: U_WORD
 #
 # platform sensor.apds9960 requires component apds9960
 #
@@ -86,7 +97,12 @@ binary_sensor:
   - platform: tuya
     id: tuya_binary_sensor
     sensor_datapoint: 1
-
+  - platform: modbus_controller
+    id: charging_input_volt_failure
+    modbus_functioncode: read_input_registers
+    address: 0x3201
+    offset: 0
+    bitmask: 0xC000
 climate:
   - platform: tuya
     id: tuya_climate
@@ -99,6 +115,13 @@ switch:
   - platform: tuya
     id: tuya_switch
     switch_datapoint: 1
+  - platform: modbus_controller
+    id: default_manual_mode
+    name: "Default_manual_mode"
+    modbus_functioncode: read_holding_registers
+    address: 0x906A
+    offset: 0
+    bitmask: 1    
 
 light:
   - platform: fastled_clockless
@@ -159,4 +182,15 @@ display:
     full_update_every: 30
     lambda: |-
       it.rectangle(0, 0, it.get_width(), it.get_height());
+
+text_sensor:
+  - platform: modbus_controller
+    id: rtc_clock
+    modbus_functioncode: read_holding_registers
+    address: 0x9013
+    offset: 0
+    register_count: 3
+    raw_encode: COMMA
+    response_size: 6
+
 
