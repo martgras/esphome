@@ -14,7 +14,7 @@ void ModbusTextSensor::log() { LOG_TEXT_SENSOR(TAG, get_name().c_str(), this); }
 
 void ModbusTextSensor::add_to_controller(ModbusController *master, ModbusFunctionCode register_type,
                                          uint16_t start_address, uint8_t offset, uint8_t register_count,
-                                         uint16_t response_bytes, bool hex_encode, uint8_t skip_updates) {
+                                         uint16_t response_bytes, RawEncoding encode, uint8_t skip_updates) {
   this->register_type = register_type;
   this->start_address = start_address;
   this->offset = offset;
@@ -22,7 +22,7 @@ void ModbusTextSensor::add_to_controller(ModbusController *master, ModbusFunctio
   this->sensor_value_type = SensorValueType::RAW;
   this->response_bytes_ = response_bytes;
   this->register_count = register_count;
-  this->hex_encode = hex_encode;
+  this->encode = encode;
   this->skip_updates = skip_updates;
   this->parent_ = master;
   master->add_sensor_item(this);
@@ -33,15 +33,26 @@ float ModbusTextSensor::parse_and_publish(const std::vector<uint8_t> &data) {
   std::ostringstream output;
   uint8_t max_items = this->response_bytes_;
   char buffer[4];
+  bool add_comma = false;
   for (auto b : data) {
-    if (this - hex_encode) {
-      sprintf(buffer, "%02x", b);
-      output << buffer;
-    } else {
-      output << (char) b;
-      if (--max_items == 0) {
+    switch (this->encode) {
+      case RawEncoding::HEXBYTES:
+        sprintf(buffer, "%02x", b);
+        output << buffer;
         break;
-      }
+      case RawEncoding::COMMA:
+        sprintf(buffer, add_comma ? ",%d" : "%d", b);
+        output << buffer;
+        add_comma = true;
+        break;
+      // Anything else no encoding
+      case RawEncoding::NONE:
+      default:
+        output << (char) b;
+        break;
+    }
+    if (--max_items == 0) {
+      break;
     }
   }
   this->publish_state(output.str());

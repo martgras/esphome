@@ -227,7 +227,10 @@ The following function codes are implemented
    - address: start address of the first register in a range
    - offset: offset from start address in bytes. If more than one register is read a modbus read registers command this value is used to find the start of this datapoint relative to start address.
    - response_size: response number of bytes of the response
-   - hex_encode: true | false     If the response is binary data it can't be published. Since a text sensor only publishes strings the hex_encode option encodes binary data as 2 byte hex string. 0x71 will be sent as "71". This allows you to process the data in a on_value lambda. See the example below how to convert the binary time data to a string and also how to set the time of the controller
+   - raw_encode: (NONE, HEXBYTES, COMMA)     If the response is binary data it can't be published. Since a text sensor only publishes strings the binary data can encoded
+     - HEXBYTES :  2 byte hex string. 0x2011 will be sent as "2011". 
+     - COMMA  : Byte values as integers, delimited by a coma. 0x2011 will be sent as "32,17"
+     This allows you to process the data in a on_value lambda. See the example below how to convert the binary time data to a string and also how to set the time of the controller
    - register_count: The number of registers this data point spans. Default is 1
    - bitmask: some values are packed in a single response word. bitmask is used to convert to a bool value. For example, bit 8 of the register 0x3200 indicates an battery error. Therefore, if the bitmask is 256. the operation is `result = (raw value & bitmask != 0)`. More than one sensor can use the same address/offset if the bitmask is different
 
@@ -283,7 +286,7 @@ If they differ the time of the esp is sent to the EPEVER controller.
         address: 0x9013
         address: 0
         register_count: 3
-        hex_encode: true
+        raw_encode: HEXBYTES
         response_size: 6
 #                /*
 #                E20 Real time clock 9013 D7-0 Sec, D15-8 Min

@@ -247,31 +247,6 @@ size_t ModbusController::create_register_ranges() {
   return register_ranges_.size();
 }
 
-bool ModbusController::remove_register_range(uint16_t start_address) {
-  bool found = false;
-
-  for (auto it = this->register_ranges_.begin(); it != this->register_ranges_.end();) {
-    if (it->start_address == start_address) {
-      // First delete sensors from the map
-      auto first_sensor = sensormap.find(it->first_sensorkey);
-      if (first_sensor != sensormap.end()) {
-        // loop through all sensors with the same start address
-        auto last_sensor = first_sensor;
-        while (last_sensor != sensormap.end() && last_sensor->second->start_address == start_address) {
-          last_sensor++;
-        }
-        sensormap.erase(first_sensor, last_sensor);
-      }
-      // Remove the range itself
-      it = this->register_ranges_.erase(it);
-      found = true;
-    } else {
-      it++;
-    }
-  }
-  return found;
-}
-
 void ModbusController::dump_config() {
   ESP_LOGCONFIG(TAG, "EPSOLAR:");
   ESP_LOGCONFIG(TAG, "  Address: 0x%02X", this->address_);
