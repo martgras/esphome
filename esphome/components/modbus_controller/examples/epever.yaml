@@ -747,7 +747,6 @@ modbus_controller:
     #  filters:
     #    - multiply: 0.01
 
-
     #- id: load_controlling_modes
     #    # 0000H Manual Control
     #    # 0001H Light ON/OFF
@@ -777,7 +776,6 @@ modbus_controller:
     #  modbus_functioncode: read_holding_registers
     #  accuracy_decimals: 0
     #  value_type: U_WORD
-
 
     #- id: backlight_time
     #  address: 0x9063
@@ -920,7 +918,7 @@ text_sensor:
     address: 0x9013
     offset: 0
     register_count: 3
-    hex_encode: true
+    raw_encode: HEXBYTES
     response_size: 6
 
 switch:

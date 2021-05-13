@@ -223,23 +223,6 @@ class ModbusController : public ModbusBase {
  public:
   ModbusController(uint16_t throttle = 0) : ModbusBase(), command_throttle_(throttle){};
   size_t create_register_ranges();
-
-  bool remove_register_range(uint16_t start_address);
-
-  // find a register by it's address regardless of the offset
-  SensorItem *find_by_register_address(ModbusFunctionCode function_code, uint16_t register_address) {
-    // Not extemly effienct but the number of registers isn't that large
-    // and the operation is used only in special cases
-    // like changing a property during setup
-    for (auto &item : this->sensormap) {
-      if (register_address == item.second->start_address + item.second->offset &&
-          function_code == item.second->register_type) {
-        return item.second;
-      }
-    }
-    return nullptr;
-  }
-
   void update() override;
   void update_range(RegisterRange &r);
   void setup() override;

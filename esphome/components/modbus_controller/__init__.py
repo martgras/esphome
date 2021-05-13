@@ -24,7 +24,7 @@ from .const import (
     CONF_RESPONSE_SIZE,
     CONF_BITMASK,
     CONF_SKIP_UPDATES,
-    CONF_HEX_ENCODE,
+    CONF_RAW_ENCODE,
 )
 
 CODEOWNERS = ["@martgras"]
@@ -87,6 +87,14 @@ SENSOR_VALUE_TYPE = {
     "U_QWORD_R": SensorValueType.S_QWORD_R,
 }
 
+RawEncodingType = cg.esphome_ns.namespace("modbus_controller::RawEncoding")
+RAW_ENCODING = {
+    "NONE": RawEncodingType.NONE,
+    "HEXBYTES": RawEncodingType.HEXBYTES,
+    "COMMA": RawEncodingType.COMMA,
+}
+
+
 sensor_entry = core_sensor.SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSensor),
@@ -129,7 +137,7 @@ text_sensor_entry = core_text_sensor.TEXT_SENSOR_SCHEMA.extend(
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_RESPONSE_SIZE, default=0): cv.int_,
-        cv.Optional(CONF_HEX_ENCODE, default=0): cv.boolean,
+        cv.Optional(CONF_RAW_ENCODE, default="NONE"): cv.enum(RAW_ENCODING),
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
     }
 ).extend(cv.COMPONENT_SCHEMA)
@@ -210,7 +218,7 @@ def to_code(config):
                     cfg[CONF_OFFSET],
                     cfg[CONF_REGISTER_COUNT],
                     cfg[CONF_RESPONSE_SIZE],
-                    cfg[CONF_HEX_ENCODE],
+                    cfg[CONF_RAW_ENCODE],
                     cfg[CONF_SKIP_UPDATES],
                 )
             )
