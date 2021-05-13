@@ -859,7 +859,7 @@ modbus_controller:
       address: 0x9013
       offset: 0
       register_count: 3
-      raw_encode: HEXBYTES
+      hex_encode: true
       response_size: 6
       #                /*
       #                E20 Real time clock 9013 D7-0 Sec, D15-8 Min
