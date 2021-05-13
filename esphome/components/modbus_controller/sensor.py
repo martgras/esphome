@@ -5,6 +5,7 @@ import esphome.codegen as cg
 from esphome.const import CONF_ID, CONF_ADDRESS, CONF_OFFSET, CONF_NAME
 from . import (
     modbus_controller_ns,
+    ModbusController,
     MODBUS_FUNCTION_CODE,
     CONF_BITMASK,
     CONF_VALUE_TYPE,
@@ -12,7 +13,7 @@ from . import (
     SENSOR_VALUE_TYPE,
 )
 from .const import (
-    CONF_MODBUSCOMPONENT_ID,
+    CONF_MODBUSCONTROLLER,
     CONF_MODBUS_FUNCTIONCODE,
     CONF_SKIP_UPDATES,
 )
@@ -26,7 +27,7 @@ ModbusSensor = modbus_controller_ns.class_("ModbusSensor", sensor.Sensor, cg.Com
 CONFIG_SCHEMA = sensor.SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusSensor),
-        cv.Required(CONF_MODBUSCOMPONENT_ID): cv.use_id("Modbus"),
+        cv.GenerateID(CONF_MODBUSCONTROLLER): cv.use_id(ModbusController),
         cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
         cv.Required(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
@@ -53,7 +54,7 @@ def to_code(config):
     yield cg.register_component(var, config)
     yield sensor.register_sensor(var, config)
 
-    paren = yield cg.get_variable(config["modbuscomponent_id"])
+    paren = yield cg.get_variable(config[CONF_MODBUSCONTROLLER])
     cg.add(
         var.add_to_controller(
             paren,

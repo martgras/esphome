@@ -245,7 +245,7 @@ Example
 ````yaml
 switch:
   - platform: modbus_controller
-    modbuscomponent_id: epever
+    modbus_controller_id: epever
     id: enable_load_test
     modbus_functioncode: read_coils
     address: 2

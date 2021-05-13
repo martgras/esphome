@@ -101,7 +101,7 @@ modbus_controller:
 
 text_sensor:
   - platform: modbus_controller
-    modbuscomponent_id: traceranx
+    modbus_controller_id: traceranx
     name: "rtc clock test 2"
     id: rtc_clock_test2
     internal: true
@@ -114,7 +114,7 @@ text_sensor:
 
 switch:
   - platform: modbus_controller
-    modbuscomponent_id: traceranx
+    modbus_controller_id: traceranx
     id: reset_to_fabric_default
     name: "Reset to Factory Default"
     modbus_functioncode: write_single_coil
@@ -123,7 +123,7 @@ switch:
 
 sensor:
   - platform: modbus_controller
-    modbuscomponent_id: traceranx
+    modbus_controller_id: traceranx
     id: array_rated_current
     name: "array_rated_current"
     address: 0x3000
@@ -137,7 +137,7 @@ sensor:
 
 binary_sensor:
   - platform: modbus_controller
-    modbuscomponent_id: traceranx
+    modbus_controller_id: traceranx
     id: manual_control_load
     modbus_functioncode: read_coils
     address: 2

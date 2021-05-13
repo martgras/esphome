@@ -912,7 +912,7 @@ text_sensor:
     id: template_rtc
 
   - platform: modbus_controller
-    modbuscomponent_id: epever
+    modbus_controller_id: epever
     name: "rtc clock test 2"
     id: rtc_clock_test2
     internal: true
@@ -925,7 +925,7 @@ text_sensor:
 
 switch:
   - platform: modbus_controller
-    modbuscomponent_id: epever
+    modbus_controller_id: epever
     id: reset_to_fabric_default
     name: "Reset to Factory Default"
     modbus_functioncode: write_single_coil
