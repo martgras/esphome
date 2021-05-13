@@ -9,8 +9,6 @@ substitutions:
 wifi:
   ssid: !secret wifi_sid
   password: !secret wifi_password
-  domain: .int.grasruck.net
-  use_address: solarstation.int.grasruck.net
   reboot_timeout: 5min
 
 time:
@@ -32,11 +30,6 @@ ota:
 
 mqtt:
   broker: 192.168.66.114
-#  on_message:
-#    topic: ${unique_id}/ota_mode
-#    payload: 'ON'
-#    then:
-#      - deep_sleep.prevent: deep_sleep_1
 
 uart:
   id: mod_bus
@@ -45,8 +38,6 @@ uart:
   baud_rate: 115200
   stop_bits: 1
 
-### Note enabling all sensors will probably cause a stackoverflow
-### https://github.com/esphome/issues/issues/855
 modbus_controller:
   uart_id: mod_bus
   # ctrl_pin: 5    # if you need to set the driver enable (DE) pin high before transmitting data configure it here
@@ -85,7 +76,7 @@ modbus_controller:
       address: 0x9013
       offset: 0
       register_count: 3
-      hex_encode: true
+      raw_encode: HEXBYTES
       response_size: 6
   #end of modbus_controller
 
@@ -109,7 +100,7 @@ text_sensor:
     address: 0x9013
     offset: 0
     register_count: 3
-    hex_encode: true
+    raw_encode: HEXBYTES
     response_size: 6
 
 switch:
@@ -144,4 +135,3 @@ binary_sensor:
     offset: 0
     name: "manual control the load"
     bitmask: 1
-    create_switch: True

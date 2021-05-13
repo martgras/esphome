@@ -18,12 +18,13 @@ class ModbusSwitch : public Component, public switch_::Switch, public SensorItem
   void write_state(bool state) override;
   void set_state(bool state) { this->state = state; }
   void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
-  virtual float parse_and_publish(const std::vector<uint8_t> &data) override;
-  virtual void log() override;
+  float parse_and_publish(const std::vector<uint8_t> &data) override;
+  void log() override;
   std::string const &get_sensorname() override { return this->get_name(); };
   void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
                          uint8_t offset, uint32_t bitmask);
- private:
+
+ protected:
   ModbusController *parent_{nullptr};
 };
 

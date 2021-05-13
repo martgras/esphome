@@ -18,16 +18,16 @@ class ModbusBinarySensor : public Component, public binary_sensor::BinarySensor,
     this->bitmask = bitmask, this->sensor_value_type = SensorValueType::BIT;
     this->skip_updates = skip_updates;
   }
-  virtual float parse_and_publish(const std::vector<uint8_t> &data) override;
+  float parse_and_publish(const std::vector<uint8_t> &data) override;
   std::string const &get_sensorname() override { return this->get_name(); };
-  virtual void log() override;
+  void log() override;
   void update(){};
   void set_state(bool state) { this->state = state; }
   void set_modbus_parent(ModbusController *parent) { this->parent_ = parent; }
   void add_to_controller(ModbusController *master, ModbusFunctionCode register_type, uint16_t start_address,
                          uint8_t offset, uint32_t bitmask, uint8_t skip_updates = 0);
 
- private:
+ protected:
   ModbusController *parent_{nullptr};
 };
 

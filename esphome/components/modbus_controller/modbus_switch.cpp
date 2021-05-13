@@ -66,7 +66,7 @@ void ModbusSwitch::write_state(bool state) {
            this->get_name().c_str(), state, (int) this->register_type, this->start_address, this->offset);
   switch (this->register_type) {
     case ModbusFunctionCode::READ_COILS:
-    // offset for coil and discrete inputs is the coil/register number not bytes
+      // offset for coil and discrete inputs is the coil/register number not bytes
       cmd = ModbusCommandItem::create_write_single_coil(parent_, this->start_address + this->offset, state);
       break;
     case ModbusFunctionCode::READ_DISCRETE_INPUTS:
@@ -75,7 +75,7 @@ void ModbusSwitch::write_state(bool state) {
 
     default:
       // since offset is in bytes and a register is 16 bits we get the start by adding offset/2
-      cmd = ModbusCommandItem::create_write_single_command(parent_, this->start_address + this->offset/2,
+      cmd = ModbusCommandItem::create_write_single_command(parent_, this->start_address + this->offset / 2,
                                                            state ? 0xFFFF & this->bitmask : 0);
       break;
   }

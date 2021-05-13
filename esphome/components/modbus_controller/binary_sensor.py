@@ -10,7 +10,7 @@ from . import (
     CONF_BITMASK,
 )
 from .const import (
-    CONF_MODBUSCONTROLLER,
+    CONF_MODBUS_CONTROLLER_ID,
     CONF_MODBUS_FUNCTIONCODE,
     CONF_SKIP_UPDATES,
 )
@@ -26,7 +26,7 @@ ModbusBinarySensor = modbus_controller_ns.class_(
 CONFIG_SCHEMA = binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(ModbusBinarySensor),
-        cv.GenerateID(CONF_MODBUSCONTROLLER): cv.use_id(ModbusController),
+        cv.GenerateID(CONF_MODBUS_CONTROLLER_ID): cv.use_id(ModbusController),
         cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
         cv.Required(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
@@ -49,7 +49,7 @@ def to_code(config):
     yield cg.register_component(var, config)
     yield binary_sensor.register_binary_sensor(var, config)
 
-    paren = yield cg.get_variable(config[CONF_MODBUSCONTROLLER])
+    paren = yield cg.get_variable(config[CONF_MODBUS_CONTROLLER_ID])
     cg.add(var.set_modbus_parent(paren))
     cg.add(
         var.add_to_controller(

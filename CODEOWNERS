@@ -64,6 +64,7 @@ esphome/components/mcp9808/* @k7hpn
 esphome/components/midea_ac/* @dudanov
 esphome/components/midea_dongle/* @dudanov
 esphome/components/mitsubishi/* @RubyBailey
+esphome/components/modbus_controller/* @martgras
 esphome/components/network/* @esphome/core
 esphome/components/nfc/* @jesserockz
 esphome/components/ota/* @esphome/core
@@ -86,6 +87,7 @@ esphome/components/sgp40/* @SenexCrenshaw
 esphome/components/sht4x/* @sjtrny
 esphome/components/shutdown/* @esphome/core
 esphome/components/sim800l/* @glmnet
+esphome/components/sm2135/* @BoukeHaarsma23
 esphome/components/spi/* @esphome/core
 esphome/components/ssd1322_base/* @kbx81
 esphome/components/ssd1322_spi/* @kbx81
