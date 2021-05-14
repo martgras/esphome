@@ -5,7 +5,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char *TAG = "modbus_sensor";
+static const char *const TAG = "modbus_sensor";
 
 // ModbusSensor
 // Extract bits from value and shift right according to the bitmask
@@ -99,7 +99,7 @@ float ModbusSensor::parse_and_publish(const std::vector<uint8_t> &data) {
     default:
       break;
   }
-  result = float(value);
+  result = static_cast<float>(value);
 
   // No need to publish if the value didn't change since the last publish
   // can reduce mqtt traffic considerably if many sensors are used

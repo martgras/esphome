@@ -63,12 +63,12 @@ enum class SensorValueType : uint8_t {
 
 struct RegisterRange {
   uint16_t start_address;
-  uint8_t register_count;
   ModbusFunctionCode register_type;
+  uint8_t register_count;
+  uint8_t skip_updates;  // the config value
   uint64_t first_sensorkey;
-  uint8_t skip_updates;          // the config value
   uint8_t skip_updates_counter;  // the running value
-};
+} __attribute__((packed));
 
 // All sensors are stored in a map
 // to enable binary sensors for values encoded as bits in the same register the key of each sensor
@@ -109,7 +109,7 @@ inline uint64_t qword_from_hex_str(const std::string &value, uint8_t pos) {
 std::string get_hex_string(const std::vector<uint8_t> &data);
 
 // Extract data from modbus response buffer
-template<typename T> T get_data(const std::vector<uint8_t> &data, size_t offset) {
+template<typename T> auto get_data(const std::vector<uint8_t> &data, size_t offset) -> T {
   if (sizeof(T) == sizeof(uint8_t)) {
     return T(data[offset]);
   }
@@ -148,42 +148,28 @@ struct SensorItem {
   virtual float parse_and_publish(const std::vector<uint8_t> &data) = 0;
 
   uint64_t getkey() const { return calc_key(register_type, start_address, offset, bitmask); }
-  size_t get_register_size() {
+  size_t get_register_size() const {
     size_t size = 0;
     switch (sensor_value_type) {
-      case SensorValueType::RAW:
-        size = 4;
-        break;
-      case SensorValueType::U_WORD:
-        size = 2;
-        break;
-      case SensorValueType::U_DWORD:
-        size = 4;
-        break;
-      case SensorValueType::S_WORD:
-        size = 2;
-        break;
-      case SensorValueType::S_DWORD:
-        size = register_count;
-        break;
       case SensorValueType::BIT:
         size = 1;
         break;
-      case SensorValueType::U_DWORD_R:
-        size = 4;
+      case SensorValueType::U_WORD:
+      case SensorValueType::S_WORD:
+        size = 2;
         break;
+      case SensorValueType::RAW:
+      case SensorValueType::U_DWORD:
+      case SensorValueType::S_DWORD:
+      case SensorValueType::U_DWORD_R:
       case SensorValueType::S_DWORD_R:
         size = 4;
         break;
       case SensorValueType::U_QWORD:
       case SensorValueType::U_QWORD_R:
-        size = 8;
-        break;
       case SensorValueType::S_QWORD:
+      case SensorValueType::S_QWORD_R:
         size = 8;
-        break;
-      default:
-        size = 2;
         break;
     }
     return size;

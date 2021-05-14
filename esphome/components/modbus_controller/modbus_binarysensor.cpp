@@ -5,7 +5,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char *TAG = "modbus_binarysensor";
+static const char *const TAG = "modbus_binarysensor";
 
 // ModbusBinarySensor
 void ModbusBinarySensor::add_to_controller(ModbusController *master, ModbusFunctionCode register_type,
@@ -44,7 +44,7 @@ float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
       break;
   }
 
-  result = float(value);
+  result = static_cast<float>(value);
   this->publish_state(value != 0.0);
   return result;
 }

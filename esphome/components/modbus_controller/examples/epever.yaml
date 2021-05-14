@@ -38,25 +38,23 @@ esphome:
               0x0055,  // 9001 Battery Cap 0x55 == 85AH
               0x012C,  // 9002 Temp compensation -3V /°C/2V
               0x05DC,  // 9003 0x5DC == 1500 Over Voltage Disconnect Voltage 15,0
-              0x058C,  // 9004 0x58C == 1480 Charging Limit Voltage	14,8
-              0x058C,  // 9005 Over Voltage Reconnect Voltage	14,8
-              0x05B4,  // 9006 Equalize Charging Voltage	14,6
-              0x05A0,  // 9007 Boost Charging Voltage	14,4
-              0x0564,  // 9008 Float Charging Voltage	13,8
-              0x0528,  // 9009 Boost Reconnect Charging Voltage	13,2
-              0x04EC,  // 900A Low Voltage Reconnect Voltage	12,6
-              0x04C4,  // 900B Under Voltage Warning Reconnect Voltage	12,2
-              0x04BA,  // 900c Under Volt. Warning Volt	12,1
-              0x04BA,  // 900d Low Volt. Disconnect Volt.	12,1
-              0x0424   // 900E Discharging Limit Voltage	10,6
+              0x058C,  // 9004 0x58C == 1480 Charging Limit Voltage 14,8
+              0x058C,  // 9005 Over Voltage Reconnect Voltage 14,8
+              0x05B4,  // 9006 Equalize Charging Voltage 14,6
+              0x05A0,  // 9007 Boost Charging Voltage 14,4
+              0x0564,  // 9008 Float Charging Voltage 13,8
+              0x0528,  // 9009 Boost Reconnect Charging Voltage 13,2
+              0x04EC,  // 900A Low Voltage Reconnect Voltage 12,6
+              0x04C4,  // 900B Under Voltage Warning Reconnect Voltage 12,2
+              0x04BA,  // 900c Under Volt. Warning Volt 12,1
+              0x04BA,  // 900d Low Volt. Disconnect Volt. 12,1
+              0x0424   // 900E Discharging Limit Voltage 10,6
           };
           // Boost and equalization periods
           std::vector<uint16_t> battery_settings2 = {
-              0x0000,  // 906B Equalize Duration (min.)	0
-              0x0075   // 906C Boost Duration (aka absorb)	120 mins
+              0x0000,  // 906B Equalize Duration (min.) 0
+              0x0075   // 906C Boost Duration (aka absorb) 120 mins
           };
-
-
           esphome::modbus_controller::ModbusCommandItem set_battery1_command =
               esphome::modbus_controller::ModbusCommandItem::create_write_multiple_command(controller, 0x9000, 15,
                                                                                           battery_settings);

@@ -5,7 +5,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char *TAG = "modbus_switch";
+static const char *const TAG = "modbus_switch";
 
 // ModbusSwitch
 void ModbusSwitch::log() { LOG_SWITCH(TAG, get_name().c_str(), this); }
@@ -38,8 +38,6 @@ float ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
   float result = NAN;
   switch (this->register_type) {
     case ModbusFunctionCode::READ_DISCRETE_INPUTS:
-      value = coil_from_vector(this->offset, data);
-      break;
     case ModbusFunctionCode::READ_COILS:
       // offset for coil is the actual number of the coil not the byte offset
       value = coil_from_vector(this->offset, data);
@@ -49,7 +47,7 @@ float ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
       break;
   }
 
-  result = float(value);
+  result = static_cast<float>(value);
   this->publish_state(value != 0.0);
   return result;
 }
@@ -79,7 +77,7 @@ void ModbusSwitch::write_state(bool state) {
                                                            state ? 0xFFFF & this->bitmask : 0);
       break;
   }
-  parent_->queue_command(std::move(cmd));
+  parent_->queue_command(cmd);
   publish_state(state);
 }
 // ModbusSwitch end

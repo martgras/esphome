@@ -11,7 +11,7 @@
 #endif
 #include "modbuscontroller.h"
 
-static const char *TAG = "ModbusController";
+static const char *const TAG = "ModbusController";
 
 namespace esphome {
 namespace modbus_controller {
@@ -46,14 +46,14 @@ bool ModbusController::send_next_command_() {
     sending = false;  // Clear send flag afer 0.5s
   }
   if (!sending && (last_send > this->command_throttle_) && !command_queue_.empty()) {
-    this->sending = true;
+    sending = true;
     auto &command = command_queue_.front();
     ESP_LOGD(TAG, "Sending next modbus command %u %u", last_send, this->command_throttle_);
     command->send();
     this->last_command_timestamp_ = millis();
     if (!command->on_data_func) {  // No handler remove from queue directly after sending
       command_queue_.pop_front();
-      this->sending = false;
+      sending = false;
     }
   }
   return (!command_queue_.empty());
@@ -64,10 +64,10 @@ void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
     // Move the commandItem to the response queue
-    current_command->payload = std::move(data);
+    current_command->payload = data;
     this->incoming_queue_.push(std::move(current_command));
     ESP_LOGD(TAG, "Modbus respone queued");
-    this->sending = false;
+    sending = false;
     command_queue_.pop_front();
   }
 }
@@ -81,7 +81,7 @@ void ModbusController::process_modbus_data(const ModbusCommandItem *response) {
 
 void ModbusController::on_modbus_error(uint8_t function_code, uint8_t exception_code) {
   ESP_LOGE(TAG, "Modbus error function code: 0x%X exception: %d ", function_code, exception_code);
-  this->sending = false;
+  sending = false;
   // Remove pending command waiting for a response
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
@@ -135,7 +135,7 @@ void ModbusController::queue_command(const ModbusCommandItem &command) {
       return;
     }
   }
-  command_queue_.push_back(std::move(make_unique<ModbusCommandItem>(command)));
+  command_queue_.push_back(make_unique<ModbusCommandItem>(command));
 }
 
 void ModbusController::update_range(RegisterRange &r) {
@@ -156,7 +156,7 @@ void ModbusController::update_range(RegisterRange &r) {
 //
 void ModbusController::update() {
   if (!command_queue_.empty()) {
-    ESP_LOGW(TAG, "%d modbus commands already in queue", command_queue_.size());
+    ESP_LOGW(TAG, "%zu modbus commands already in queue", command_queue_.size());
   } else {
     ESP_LOGI(TAG, "updating modbus component");
   }

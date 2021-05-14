@@ -4,7 +4,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char *TAG = "modbus_base";
+static const char *const TAG = "modbus_base";
 
 // read any new data from uart
 void ModbusBase::read_uart() {
@@ -15,7 +15,7 @@ void ModbusBase::read_uart() {
   }
 
   while (this->available()) {
-    uint8_t byte;
+    uint8_t byte{0};
     this->read_byte(&byte);
     if (this->parse_modbus_byte_(byte)) {
       this->last_modbus_byte_ = now;
@@ -221,7 +221,7 @@ void ModbusBase::send(uint8_t address, uint8_t function_code, uint16_t start_add
 
 // Send raw command. Except CRC everything must be contained in payload
 void ModbusBase::send_raw(const std::vector<uint8_t> &payload) {
-  if (payload.size() == 0) {
+  if (payload.empty()) {
     return;
   }
   if (ctrl_pin_) {
