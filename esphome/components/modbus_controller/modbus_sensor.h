@@ -36,7 +36,7 @@ class ModbusSensor : public Component, public sensor::Sensor, public SensorItem 
                          uint8_t offset, uint32_t bitmask, SensorValueType value_type, int register_count,
                          uint8_t skip_updates);
 
- private:
+ protected:
   ModbusController *parent_{nullptr};
 };
 

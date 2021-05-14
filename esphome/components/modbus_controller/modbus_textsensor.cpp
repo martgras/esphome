@@ -7,7 +7,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char *TAG = "modbus_textsensor";
+static const char *const TAG = "modbus_textsensor";
 
 // ModbusTextSensor
 void ModbusTextSensor::log() { LOG_TEXT_SENSOR(TAG, get_name().c_str(), this); }
@@ -29,7 +29,7 @@ void ModbusTextSensor::add_to_controller(ModbusController *master, ModbusFunctio
 }
 
 float ModbusTextSensor::parse_and_publish(const std::vector<uint8_t> &data) {
-  float result = this->response_bytes_;
+  float result = static_cast<float>(this->response_bytes_);
   std::ostringstream output;
   uint8_t max_items = this->response_bytes_;
   char buffer[4];
