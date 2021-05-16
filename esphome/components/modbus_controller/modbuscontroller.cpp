@@ -11,7 +11,7 @@
 #endif
 #include "modbuscontroller.h"
 
-static const char * const TAG = "ModbusController";
+static const char *const TAG = "ModbusController";
 
 namespace esphome {
 namespace modbus_controller {

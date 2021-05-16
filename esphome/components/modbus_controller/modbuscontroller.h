@@ -65,10 +65,10 @@ struct RegisterRange {
   uint16_t start_address;
   ModbusFunctionCode register_type;
   uint8_t register_count;
-  uint8_t skip_updates;          // the config value
+  uint8_t skip_updates;  // the config value
   uint64_t first_sensorkey;
   uint8_t skip_updates_counter;  // the running value
-} __attribute__((packed)) ;
+} __attribute__((packed));
 
 // All sensors are stored in a map
 // to enable binary sensors for values encoded as bits in the same register the key of each sensor

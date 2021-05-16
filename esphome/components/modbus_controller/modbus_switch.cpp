@@ -5,7 +5,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char * const TAG = "modbus_switch";
+static const char *const TAG = "modbus_switch";
 
 // ModbusSwitch
 void ModbusSwitch::log() { LOG_SWITCH(TAG, get_name().c_str(), this); }

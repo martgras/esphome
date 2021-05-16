@@ -73,6 +73,10 @@ The pins used on the ESP32 side can be changed there is no special reason I chos
 
 ## Software setup
 
+There are several options to use this component. 
+
+#### Clone my repository 
+
 ```
 # Clone repo
 git clone https://github.com/martgras/esphome.git -b modbus_component
@@ -86,6 +90,29 @@ esphome <path to your config.yaml> run
 
 ```
 
+#### Reference modbus controller as an external component
+
+Instead of cloning my repository you can use modbus_controller as an external component (Kudos to @derwolff for this hint)
+ )
+
+````
+external_components:
+  # use  GitHub
+  - source:
+      type: git
+      url: https://github.com/martgras/esphome
+      ref: modbus_component
+    components: [ modbus_controller ]
+esphome:
+  name: dc
+  platform: ESP32
+  board: esp32dev
+...
+modbus_controller:
+...
+````
+
+### Configuration
 
 Modbus sensors can be directly defined (inline) under the modbus_controller hub or as standalone components
 

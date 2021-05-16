@@ -5,7 +5,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char * const TAG = "modbus_binarysensor";
+static const char *const TAG = "modbus_binarysensor";
 
 // ModbusBinarySensor
 void ModbusBinarySensor::add_to_controller(ModbusController *master, ModbusFunctionCode register_type,

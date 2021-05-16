@@ -5,7 +5,7 @@
 namespace esphome {
 namespace modbus_controller {
 
-static const char * const TAG = "modbus_sensor";
+static const char *const TAG = "modbus_sensor";
 
 // ModbusSensor
 // Extract bits from value and shift right according to the bitmask
