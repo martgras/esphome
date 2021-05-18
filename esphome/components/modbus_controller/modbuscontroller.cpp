@@ -31,7 +31,10 @@ std::string get_hex_string(const std::vector<uint8_t> &data) {
   return output.str();
 }
 
-void ModbusController::setup() { this->create_register_ranges(); }
+void ModbusController::setup() {
+  ModbusBase::setup();
+  this->create_register_ranges();
+}
 
 /*
  To work with the existing modbus class and avoid polling for responses a command queue is used.
