@@ -142,8 +142,9 @@ text_sensor_entry = core_text_sensor.TEXT_SENSOR_SCHEMA.extend(
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
+MULTI_CONF = True
 
-CONFIG_SCHEMA = (
+CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(ModbusController),

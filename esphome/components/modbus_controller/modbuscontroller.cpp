@@ -174,6 +174,9 @@ void ModbusController::update() {
 size_t ModbusController::create_register_ranges() {
   register_ranges_.clear();
   uint8_t n = 0;
+  if (sensormap_.empty()) {
+    return 0;
+  }
   // map is already sorted by keys so we start with the lowest address ;
   auto ix = sensormap_.begin();
   auto prev = ix;
