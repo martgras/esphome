@@ -4,7 +4,7 @@
 namespace esphome {
 namespace light {
 
-static const char *TAG = "light.addressable";
+static const char *const TAG = "light.addressable";
 
 Color ESPHSVColor::to_rgb() const {
   // based on FastLED's hsv rainbow to rgb
@@ -120,7 +120,7 @@ void ESPRangeView::darken(uint8_t delta) {
   for (auto c : *this)
     c.darken(delta);
 }
-ESPRangeView &ESPRangeView::operator=(const ESPRangeView &rhs) {
+ESPRangeView &ESPRangeView::operator=(const ESPRangeView &rhs) {  // NOLINT
   // If size doesn't match, error (todo warning)
   if (rhs.size() != this->size())
     return *this;
