@@ -7,16 +7,14 @@
 #ifdef ARDUINO_ARCH_ESP32
 
 namespace esphome {
-namespace esp32_ble {
+namespace esp32_ble_server {
 
-static const char *TAG = "esp32_ble.characteristic";
+static const char *const TAG = "esp32_ble_server.characteristic";
 
 BLECharacteristic::BLECharacteristic(const ESPBTUUID uuid, uint32_t properties) : uuid_(uuid) {
   this->set_value_lock_ = xSemaphoreCreateBinary();
-  this->create_lock_ = xSemaphoreCreateBinary();
-
   xSemaphoreGive(this->set_value_lock_);
-  xSemaphoreGive(this->create_lock_);
+
   this->properties_ = (esp_gatt_char_prop_t) 0;
 
   this->set_broadcast_property((properties & PROPERTY_BROADCAST) != 0);
@@ -32,10 +30,10 @@ void BLECharacteristic::set_value(std::vector<uint8_t> value) {
   this->value_ = value;
   xSemaphoreGive(this->set_value_lock_);
 }
-void BLECharacteristic::set_value(std::string value) {
+void BLECharacteristic::set_value(const std::string &value) {
   this->set_value(std::vector<uint8_t>(value.begin(), value.end()));
 }
-void BLECharacteristic::set_value(uint8_t *data, size_t length) {
+void BLECharacteristic::set_value(const uint8_t *data, size_t length) {
   this->set_value(std::vector<uint8_t>(data, data + length));
 }
 void BLECharacteristic::set_value(uint8_t &data) {
@@ -100,12 +98,11 @@ void BLECharacteristic::notify(bool notification) {
 
 void BLECharacteristic::add_descriptor(BLEDescriptor *descriptor) { this->descriptors_.push_back(descriptor); }
 
-bool BLECharacteristic::do_create(BLEService *service) {
+void BLECharacteristic::do_create(BLEService *service) {
   this->service_ = service;
   esp_attr_control_t control;
   control.auto_rsp = ESP_GATT_RSP_BY_APP;
 
-  xSemaphoreTake(this->create_lock_, SEMAPHORE_MAX_DELAY);
   ESP_LOGV(TAG, "Creating characteristic - %s", this->uuid_.to_string().c_str());
 
   esp_bt_uuid_t uuid = this->uuid_.get_uuid();
@@ -114,15 +111,39 @@ bool BLECharacteristic::do_create(BLEService *service) {
 
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "esp_ble_gatts_add_char failed: %d", err);
+    return;
+  }
+
+  this->state_ = CREATING;
+}
+
+bool BLECharacteristic::is_created() {
+  if (this->state_ == CREATED)
+    return true;
+
+  if (this->state_ != CREATING_DEPENDENTS)
     return false;
-  }
 
-  xSemaphoreWait(this->create_lock_, SEMAPHORE_MAX_DELAY);
-
+  bool created = true;
   for (auto *descriptor : this->descriptors_) {
-    descriptor->do_create(this);
+    created &= descriptor->is_created();
   }
-  return true;
+  if (created)
+    this->state_ = CREATED;
+  return this->state_ == CREATED;
+}
+
+bool BLECharacteristic::is_failed() {
+  if (this->state_ == FAILED)
+    return true;
+
+  bool failed = false;
+  for (auto *descriptor : this->descriptors_) {
+    failed |= descriptor->is_failed();
+  }
+  if (failed)
+    this->state_ = FAILED;
+  return this->state_ == FAILED;
 }
 
 void BLECharacteristic::set_broadcast_property(bool value) {
@@ -168,7 +189,12 @@ void BLECharacteristic::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt
     case ESP_GATTS_ADD_CHAR_EVT: {
       if (this->uuid_ == ESPBTUUID::from_uuid(param->add_char.char_uuid)) {
         this->handle_ = param->add_char.attr_handle;
-        xSemaphoreGive(this->create_lock_);
+
+        for (auto *descriptor : this->descriptors_) {
+          descriptor->do_create(this);
+        }
+
+        this->state_ = CREATING_DEPENDENTS;
       }
       break;
     }
@@ -274,7 +300,7 @@ void BLECharacteristic::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt
   }
 }
 
-}  // namespace esp32_ble
+}  // namespace esp32_ble_server
 }  // namespace esphome
 
 #endif
