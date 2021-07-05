@@ -236,7 +236,7 @@ class ModbusController : public ModbusBase {
   std::queue<std::unique_ptr<ModbusCommandItem>> incoming_queue_;
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
-  static std::atomic_bool sending_;  // NOLINT
+  static std::atomic_bool sending_;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 };
 
 }  // namespace modbus_controller

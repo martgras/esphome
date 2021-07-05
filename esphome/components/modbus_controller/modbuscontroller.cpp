@@ -289,7 +289,7 @@ void ModbusController::on_write_register_response(ModbusFunctionCode function_co
   ESP_LOGD(TAG, "Command ACK 0x%X %d ", get_data<uint16_t>(data, 0), get_data<int16_t>(data, 1));
 }
 
-std::atomic_bool ModbusController::sending_(false);  // NOLINT
+std::atomic_bool ModbusController::sending_(false);  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 // factory methods
 ModbusCommandItem ModbusCommandItem::create_read_command(
