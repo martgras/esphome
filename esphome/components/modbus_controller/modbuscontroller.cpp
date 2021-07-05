@@ -45,18 +45,18 @@ void ModbusController::setup() {
 bool ModbusController::send_next_command_() {
   uint32_t last_send = millis() - this->last_command_timestamp_;
 
-  if (sending && last_send > 500) {
-    sending = false;  // Clear send flag afer 0.5s
+  if (sending_ && last_send > 500) {
+    sending_ = false;  // Clear send flag afer 0.5s
   }
-  if (!sending && (last_send > this->command_throttle_) && !command_queue_.empty()) {
-    sending = true;
+  if (!sending_ && (last_send > this->command_throttle_) && !command_queue_.empty()) {
+    sending_ = true;
     auto &command = command_queue_.front();
     ESP_LOGD(TAG, "Sending next modbus command %u %u", last_send, this->command_throttle_);
     command->send();
     this->last_command_timestamp_ = millis();
     if (!command->on_data_func) {  // No handler remove from queue directly after sending
       command_queue_.pop_front();
-      sending = false;
+      sending_ = false;
     }
   }
   return (!command_queue_.empty());
@@ -70,7 +70,7 @@ void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
     current_command->payload = data;
     this->incoming_queue_.push(std::move(current_command));
     ESP_LOGD(TAG, "Modbus respone queued");
-    sending = false;
+    sending_ = false;
     command_queue_.pop_front();
   }
 }
@@ -84,7 +84,7 @@ void ModbusController::process_modbus_data(const ModbusCommandItem *response) {
 
 void ModbusController::on_modbus_error(uint8_t function_code, uint8_t exception_code) {
   ESP_LOGE(TAG, "Modbus error function code: 0x%X exception: %d ", function_code, exception_code);
-  sending = false;
+  sending_ = false;
   // Remove pending command waiting for a response
   auto &current_command = this->command_queue_.front();
   if (current_command != nullptr) {
@@ -289,7 +289,7 @@ void ModbusController::on_write_register_response(ModbusFunctionCode function_co
   ESP_LOGD(TAG, "Command ACK 0x%X %d ", get_data<uint16_t>(data, 0), get_data<int16_t>(data, 1));
 }
 
-std::atomic_bool ModbusController::sending(false);
+std::atomic_bool ModbusController::sending_(false);  // NOLINT
 
 // factory methods
 ModbusCommandItem ModbusCommandItem::create_read_command(
@@ -314,7 +314,7 @@ ModbusCommandItem ModbusCommandItem::create_read_command(ModbusController *modbu
   cmd.register_address = start_address;
   cmd.register_count = register_count;
   cmd.on_data_func = [modbusdevice](ModbusFunctionCode function_code, uint16_t start_address,
-                                    const std::vector<uint8_t> data) {
+                                    const std::vector<uint8_t> &data) {
     modbusdevice->on_register_data(function_code, start_address, data);
   };
   return cmd;
@@ -329,7 +329,7 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_command(ModbusControl
   cmd.register_address = start_address;
   cmd.register_count = register_count;
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
-                                         const std::vector<uint8_t> data) {
+                                         const std::vector<uint8_t> &data) {
     modbusdevice->on_write_register_response(cmd.function_code, start_address, data);
   };
   for (auto v : values) {
@@ -347,7 +347,7 @@ ModbusCommandItem ModbusCommandItem::create_write_single_coil(ModbusController *
   cmd.register_address = address;
   cmd.register_count = 1;
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
-                                         const std::vector<uint8_t> data) {
+                                         const std::vector<uint8_t> &data) {
     modbusdevice->on_write_register_response(cmd.function_code, start_address, data);
   };
   cmd.payload.push_back(value ? 0xFF : 0);
@@ -363,7 +363,7 @@ ModbusCommandItem ModbusCommandItem::create_write_multiple_coils(ModbusControlle
   cmd.register_address = start_address;
   cmd.register_count = values.size();
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
-                                         const std::vector<uint8_t> data) {
+                                         const std::vector<uint8_t> &data) {
     modbusdevice->on_write_register_response(cmd.function_code, start_address, data);
   };
 
@@ -394,7 +394,7 @@ ModbusCommandItem ModbusCommandItem::create_write_single_command(ModbusControlle
   cmd.register_address = start_address;
   cmd.register_count = 1;  // not used here anyways
   cmd.on_data_func = [modbusdevice, cmd](ModbusFunctionCode function_code, uint16_t start_address,
-                                         const std::vector<uint8_t> data) {
+                                         const std::vector<uint8_t> &data) {
     modbusdevice->on_write_register_response(cmd.function_code, start_address, data);
   };
   cmd.payload.push_back((value / 256) & 0xFF);
@@ -407,7 +407,7 @@ ModbusCommandItem ModbusCommandItem::create_custom_command(ModbusController *mod
   ModbusCommandItem cmd;
   cmd.modbusdevice = modbusdevice;
   cmd.function_code = ModbusFunctionCode::CUSTOM;
-  cmd.on_data_func = [](ModbusFunctionCode, uint16_t, const std::vector<uint8_t> data) {
+  cmd.on_data_func = [](ModbusFunctionCode, uint16_t, const std::vector<uint8_t> &data) {
     ESP_LOGI(TAG, "Custom Command sent");
   };
   cmd.payload = values;

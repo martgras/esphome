@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-
 #include "esphome/core/component.h"
 #include "esphome/core/log.h"
 #include "esphome/components/sensor/sensor.h"
@@ -238,7 +236,7 @@ class ModbusController : public ModbusBase {
   std::queue<std::unique_ptr<ModbusCommandItem>> incoming_queue_;
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
-  static std::atomic_bool sending;
+  static std::atomic_bool sending_;  // NOLINT
 };
 
 }  // namespace modbus_controller
