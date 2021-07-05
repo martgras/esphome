@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdint.h>
-
 #include "esphome/core/component.h"
 #include "esphome/core/log.h"
 #include "esphome/components/sensor/sensor.h"
@@ -109,7 +107,7 @@ inline uint64_t qword_from_hex_str(const std::string &value, uint8_t pos) {
 std::string get_hex_string(const std::vector<uint8_t> &data);
 
 // Extract data from modbus response buffer
-template<typename T> auto get_data(const std::vector<uint8_t> &data, size_t offset) -> T {
+template<typename T> T get_data(const std::vector<uint8_t> &data, size_t offset) {
   if (sizeof(T) == sizeof(uint8_t)) {
     return T(data[offset]);
   }
@@ -237,7 +235,7 @@ class ModbusController : public ModbusBase {
   std::queue<std::unique_ptr<ModbusCommandItem>> incoming_queue_;
   uint32_t last_command_timestamp_;
   uint16_t command_throttle_;
-  static std::atomic_bool sending;
+  static std::atomic_bool sending_;  // NOLINT
 };
 
 }  // namespace modbus_controller
