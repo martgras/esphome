@@ -55,7 +55,7 @@ bool Modbus::parse_modbus_byte_(uint8_t byte) {
   size_t at = this->rx_buffer_.size();
   this->rx_buffer_.push_back(byte);
   const uint8_t *raw = &this->rx_buffer_[0];
-  // ESP_LOGV(TAG, "Modbus received Byte  %d (0X%x)", byte, byte);
+  ESP_LOGV(TAG, "Modbus received Byte  %d (0X%x)", byte, byte);
   // Byte 0: modbus address (match all)
   if (at == 0)
     return true;
