@@ -17,7 +17,7 @@ void ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
       value = coil_from_vector(this->offset, data);
       break;
     default:
-      value = get_data<uint16_t>(data, this->offset) & this->bitmask;
+      value = get_data<uint16_t>(data, this->offset * 2) & this->bitmask;
       break;
   }
 
