@@ -41,7 +41,8 @@ void ModbusSensor::parse_and_publish(const std::vector<uint8_t> &data) {
 
   switch (sensor_value_type) {
     case SensorValueType::U_WORD:
-      value = mask_and_shift_by_rightbit(get_data<uint16_t>(data, buffer_offset), this->bitmask);  // default is 0xFFFF ;
+      value =
+          mask_and_shift_by_rightbit(get_data<uint16_t>(data, buffer_offset), this->bitmask);  // default is 0xFFFF ;
       result = static_cast<float>(value);
       break;
     case SensorValueType::U_DWORD:
@@ -62,6 +63,7 @@ void ModbusSensor::parse_and_publish(const std::vector<uint8_t> &data) {
       break;
     case SensorValueType::S_DWORD:
       value = mask_and_shift_by_rightbit(get_data<int32_t>(data, buffer_offset), this->bitmask);
+      result = static_cast<float>(value);
       break;
     case SensorValueType::S_DWORD_R: {
       value = get_data<uint32_t>(data, buffer_offset);

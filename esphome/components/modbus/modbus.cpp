@@ -197,7 +197,7 @@ void Modbus::send_with_payload(uint8_t address, uint8_t function_code, uint16_t 
 
   if (payload != nullptr) {
     if (function_code == 0xF || function_code == 0x10) {  // Write multiple
-      data.push_back(payload_len);                      // Byte count is required for write
+      data.push_back(payload_len);                        // Byte count is required for write
     } else {
       payload_len = 2;  // Write single register or coil
     }
@@ -210,10 +210,8 @@ void Modbus::send_with_payload(uint8_t address, uint8_t function_code, uint16_t 
   data.push_back(crc >> 0);
   data.push_back(crc >> 8);
 
-
   if (this->flow_control_pin_ != nullptr)
     this->flow_control_pin_->digital_write(true);
-
 
   this->write_array(data);
   this->flush();
