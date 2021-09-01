@@ -55,7 +55,7 @@ bool Modbus::parse_modbus_byte_(uint8_t byte) {
   size_t at = this->rx_buffer_.size();
   this->rx_buffer_.push_back(byte);
   const uint8_t *raw = &this->rx_buffer_[0];
-  ESP_LOGV(TAG, "Modbus received Byte  %d (0X%x)", byte, byte);
+  // ESP_LOGV(TAG, "Modbus received Byte  %d (0X%x)", byte, byte);
   // Byte 0: modbus address (match all)
   if (at == 0)
     return true;
@@ -186,7 +186,6 @@ void Modbus::send_with_payload(uint8_t address, uint8_t function_code, uint16_t 
   }
 
   std::vector<uint8_t> data;
-  data.resize(6);  // At least 6 bytes
   data.push_back(address);
   data.push_back(function_code);
   data.push_back(start_address >> 8);
@@ -221,7 +220,8 @@ void Modbus::send_with_payload(uint8_t address, uint8_t function_code, uint16_t 
 
   if (this->flow_control_pin_ != nullptr)
     this->flow_control_pin_->digital_write(false);
-  waiting_for_response = true;
+  waiting_for_response = address;
+  last_send_ = millis();
   ESP_LOGV(TAG, "Modbus write: %s", hexencode(data).c_str());
 }
 
@@ -231,10 +231,11 @@ void Modbus::send_raw(const std::vector<uint8_t> &payload) {
     return;
   }
 
+  auto crc = crc16(payload.data(), payload.size());
+
   if (this->flow_control_pin_ != nullptr)
     this->flow_control_pin_->digital_write(true);
 
-  auto crc = crc16(payload.data(), payload.size());
   this->write_array(payload);
   this->write_byte(crc & 0xFF);
   this->write_byte((crc >> 8) & 0xFF);
