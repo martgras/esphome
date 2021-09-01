@@ -13,7 +13,6 @@ from .. import (
 from ..const import (
     CONF_MODBUS_CONTROLLER_ID,
     CONF_MODBUS_FUNCTIONCODE,
-    CONF_REGISTER_COUNT,
     CONF_RESPONSE_SIZE,
     CONF_RAW_ENCODE,
     CONF_SKIP_UPDATES,
@@ -42,7 +41,6 @@ CONFIG_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
         cv.Required(CONF_MODBUS_FUNCTIONCODE): cv.enum(MODBUS_FUNCTION_CODE),
         cv.Required(CONF_ADDRESS): cv.int_,
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
-        cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_RESPONSE_SIZE, default=0): cv.int_,
         cv.Optional(CONF_RAW_ENCODE, default="NONE"): cv.enum(RAW_ENCODING),
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
@@ -56,7 +54,6 @@ async def to_code(config):
         config[CONF_MODBUS_FUNCTIONCODE],
         config[CONF_ADDRESS],
         config[CONF_OFFSET],
-        config[CONF_REGISTER_COUNT],
         config[CONF_RESPONSE_SIZE],
         config[CONF_RAW_ENCODE],
         config[CONF_SKIP_UPDATES],

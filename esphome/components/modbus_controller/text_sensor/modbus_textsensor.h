@@ -11,14 +11,14 @@ enum class RawEncoding { NONE = 0, HEXBYTES = 1, COMMA = 2 };
 
 class ModbusTextSensor : public Component, public text_sensor::TextSensor, public SensorItem {
  public:
-  ModbusTextSensor(ModbusFunctionCode register_type, uint16_t start_address, uint8_t offset, uint8_t register_count,
-                   uint16_t response_bytes, RawEncoding encode, uint8_t skip_updates)
-      : Component() {
+  ModbusTextSensor(ModbusFunctionCode register_type, uint16_t start_address, uint8_t offset, uint16_t response_bytes,
+                   RawEncoding encode, uint8_t skip_updates)
+      : Component(), text_sensor::TextSensor() {
     this->register_type = register_type;
     this->start_address = start_address;
     this->offset = offset;
     this->response_bytes_ = response_bytes;
-    this->register_count = register_count;
+    this->register_count = response_bytes / 2;
     this->encode_ = encode;
     this->skip_updates = skip_updates;
     this->bitmask = 0xFFFFFFFF;
