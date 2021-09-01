@@ -10,10 +10,10 @@ from .. import (
     MODBUS_FUNCTION_CODE,
 )
 from ..const import (
+    CONF_BITMASK,
     CONF_MODBUS_CONTROLLER_ID,
     CONF_MODBUS_FUNCTIONCODE,
     CONF_SKIP_UPDATES,
-    CONF_BITMASK,
 )
 
 DEPENDENCIES = ["modbus_controller"]
