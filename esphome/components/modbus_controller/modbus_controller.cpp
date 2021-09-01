@@ -28,7 +28,7 @@ bool ModbusController::send_next_command_() {
   if ((last_send > this->command_throttle_) && !waiting_for_response() && !command_queue_.empty()) {
     auto &command = command_queue_.front();
 
-    ESP_LOGD(TAG, "Sending next modbus command to device %d register 0x%02X", this->address_,
+    ESP_LOGV(TAG, "Sending next modbus command to device %d register 0x%02X", this->address_,
              command->register_address);
     command->send();
     this->last_command_timestamp_ = millis();
@@ -53,7 +53,7 @@ void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
 
 // Dispatch the response to the registered handler
 void ModbusController::process_modbus_data(const ModbusCommandItem *response) {
-  ESP_LOGD(TAG, "Process modbus response for address 0x%X size: %zu", response->register_address,
+  ESP_LOGV(TAG, "Process modbus response for address 0x%X size: %zu", response->register_address,
            response->payload.size());
   response->on_data_func(response->function_code, response->register_address, response->payload);
 }
@@ -154,16 +154,11 @@ size_t ModbusController::create_register_ranges() {
   auto ix = sensormap_.begin();
   auto prev = ix;
   uint16_t current_start_address = ix->second->start_address;
-  uint8_t buffer_offset = ix->second->offset;
   uint8_t skip_updates = ix->second->skip_updates;
   auto first_sensorkey = ix->second->getkey();
-  int total_register_count = 0;
   while (ix != sensormap_.end()) {
-    // use the lowest non zero value for the whole range
-    // Because zero is the default value for skip_updates it is excluded from getting the min value.
-    ESP_LOGV(TAG, "Register: 0x%X %d %d  0x%llx (%d) buffer_offset = %d (0x%X) skip=%u", ix->second->start_address,
-             ix->second->register_count, ix->second->offset, ix->second->getkey(), total_register_count, buffer_offset,
-             buffer_offset, ix->second->skip_updates);
+    ESP_LOGV(TAG, "Register: 0x%X %d %d  0x%llx skip=%u", ix->second->start_address, ix->second->register_count,
+             ix->second->offset, ix->second->getkey(), ix->second->skip_updates);
     if (current_start_address != ix->second->start_address ||
         //  ( prev->second->start_address + prev->second->offset != ix->second->start_address) ||
         ix->second->register_type != prev->second->register_type) {
@@ -171,7 +166,7 @@ size_t ModbusController::create_register_ranges() {
       if (n > 0) {
         RegisterRange r;
         r.start_address = current_start_address;
-        r.register_count = total_register_count;
+        r.register_count = prev->second->offset + prev->second->register_count;
         if (prev->second->register_type == ModbusFunctionCode::READ_COILS ||
             prev->second->register_type == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
           r.register_count = prev->second->offset + 1;
@@ -186,15 +181,9 @@ size_t ModbusController::create_register_ranges() {
       skip_updates = ix->second->skip_updates;
       current_start_address = ix->second->start_address;
       first_sensorkey = ix->second->getkey();
-      total_register_count = ix->second->register_count;
-      buffer_offset = ix->second->offset;
       n = 1;
     } else {
       n++;
-      if (ix->second->offset != prev->second->offset || n == 1) {
-        total_register_count += ix->second->register_count;
-        buffer_offset += ix->second->get_register_size();
-      }
       // Use the lowest non zero skip_upates value for the range
       if (ix->second->skip_updates != 0) {
         if (skip_updates != 0) {
@@ -210,8 +199,7 @@ size_t ModbusController::create_register_ranges() {
   if (n > 0) {
     RegisterRange r;
     r.start_address = current_start_address;
-    //    r.register_count = prev->second->offset>>1 + prev->second->get_register_size();
-    r.register_count = total_register_count;
+    r.register_count = prev->second->offset + prev->second->register_count;
     if (prev->second->register_type == ModbusFunctionCode::READ_COILS ||
         prev->second->register_type == ModbusFunctionCode::READ_DISCRETE_INPUTS) {
       r.register_count = prev->second->offset + 1;
@@ -220,6 +208,7 @@ size_t ModbusController::create_register_ranges() {
     r.first_sensorkey = first_sensorkey;
     r.skip_updates = skip_updates;
     r.skip_updates_counter = 0;
+    ESP_LOGV(TAG, "Add range 0x%X %d skip:%d", r.start_address, r.register_count, r.skip_updates);
     register_ranges_.push_back(r);
   }
   return register_ranges_.size();
