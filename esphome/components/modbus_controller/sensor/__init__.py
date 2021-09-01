@@ -14,7 +14,6 @@ from ..const import (
     CONF_BITMASK,
     CONF_MODBUS_CONTROLLER_ID,
     CONF_MODBUS_FUNCTIONCODE,
-    CONF_REGISTER_COUNT,
     CONF_SKIP_UPDATES,
     CONF_VALUE_TYPE,
 )
@@ -36,7 +35,6 @@ CONFIG_SCHEMA = sensor.SENSOR_SCHEMA.extend(
         cv.Optional(CONF_OFFSET, default=0): cv.int_,
         cv.Optional(CONF_BITMASK, default=0xFFFFFFFF): cv.hex_uint32_t,
         cv.Optional(CONF_VALUE_TYPE, default="U_WORD"): cv.enum(SENSOR_VALUE_TYPE),
-        cv.Optional(CONF_REGISTER_COUNT, default=1): cv.int_,
         cv.Optional(CONF_SKIP_UPDATES, default=0): cv.int_,
     }
 ).extend(cv.COMPONENT_SCHEMA)
@@ -50,7 +48,6 @@ async def to_code(config):
         config[CONF_OFFSET],
         config[CONF_BITMASK],
         config[CONF_VALUE_TYPE],
-        config[CONF_REGISTER_COUNT],
         config[CONF_SKIP_UPDATES],
     )
     await cg.register_component(var, config)
