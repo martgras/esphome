@@ -8,7 +8,7 @@ static const char *const TAG = "modbus_controller.binary_sensor";
 
 void ModbusBinarySensor::dump_config() { LOG_BINARY_SENSOR("", "Modbus Controller Binary Sensor", this); }
 
-float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
+void ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
   int64_t value = 0;
   float result = NAN;
   switch (this->register_type) {
@@ -26,7 +26,6 @@ float ModbusBinarySensor::parse_and_publish(const std::vector<uint8_t> &data) {
 
   result = static_cast<float>(value);
   this->publish_state(value != 0.0);
-  return result;
 }
 
 }  // namespace modbus_controller
