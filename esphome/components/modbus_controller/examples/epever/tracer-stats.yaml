@@ -1,0 +1,185 @@
+sensor:
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: max_pv_voltage_today
+    name: "Maximum PV voltage today"
+    address: 0x3300
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: min_pv_voltage_today
+    name: "Minimum PV voltage today"
+    address: 0x3301
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: max_battery_voltage_today
+    name: "Maximum battery voltage today"
+    address: 0x3302
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: min_battery_today
+    name: "Minimum battery voltage today"
+    address: 0x3303
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_today
+    name: "Consumed energy today"
+    address: 0x3304
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 0
+    unit_of_measurement: "Wh"
+    filters:
+      - multiply: 10.0
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_month
+    name: "Consumed Energy Month"
+    address: 0x3306
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 0
+    unit_of_measurement: "Wh"
+    filters:
+      - multiply: 10.0
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_year
+    name: "Consumed energy year"
+    address: 0x3308
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: "kWh"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_total
+    name: "Consumed energy total"
+    address: 0x330A
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: "kWh"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_today
+    name: "Generated energy today"
+    address: 0x330C
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 0
+    unit_of_measurement: "Wh"
+    on_value:
+      then:
+        - sensor.template.publish:
+            id: generated_charge_today
+            state: !lambda "return x/12.0;"
+    filters:
+      - multiply: 10.0
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_month
+    name: "Generated energy month"
+    address: 0x330E
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 0
+    unit_of_measurement: "Wh"
+    filters:
+      - multiply: 10.0
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_year
+    name: "Generated energy year"
+    address: 0x3310
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: "kWh"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_total
+    name: "Generated energy total"
+    address: 0x3312
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: co2_reduction
+    name: "CO2 reduction"
+    address: 0x3314
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: kg
+    filters:
+      - multiply: 10.0
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_voltage
+    name: "Battery voltage"
+    address: 0x331A
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_current
+    name: "Battery current"
+    address: 0x331B
+    register_type: read
+    value_type: S_DWORD_R
+    register_count: 2
+    accuracy_decimals: 2
+    unit_of_measurement: "A"
+    filters:
+      - multiply: 0.01

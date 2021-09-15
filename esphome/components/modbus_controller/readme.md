@@ -461,8 +461,7 @@ web_server:
 
 ```
 
-(Needs rework - not up to date)
-[Example config for the EPEVER controller](https://github.com/martgras/esphome/blob/modbus_component/esphome/components/modbus_controller/examples/epever.yaml)
+[Example config for the EPEVER controller](examples/epever/epever-all-in-one.yaml)
 
 ### Format
 
