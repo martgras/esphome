@@ -351,7 +351,6 @@ modbus_controller:
     update_interval: ${updates}
 
 sensor:
-sensor:
   - platform: modbus_controller
     modbus_controller_id: epever
     id: pv_input_voltage
