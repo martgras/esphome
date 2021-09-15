@@ -34,7 +34,7 @@ sensor:
     address: 0x9001
     name: "Battery Capacity"
     modbus_functioncode: read_holding_registers
-    value_type: U_WO
+    value_type: U_WORD
 ```
 
 change to
@@ -392,7 +392,7 @@ binary_sensor:
     modbus_controller_id: epever
     id: battery_internal_resistance_abnormal
     name: "Battery internal resistance abnormal"
-    modbus_functioncode: read_input_registers
+    register_type: read
     address: 0x3200
     bitmask: 0x80 #(bit 8)
 
