@@ -19,10 +19,10 @@ Tested using an EPEVER Tracer2210AN MPPT controller, Heidelberg Wallbox and PZEM
 
 ### A new breaking change.
 
-Switching from using `modbus_function_code' to 'register_type'. The code is picking best function code on it's own.
-Configuration is also less confusing. The options are 'coil', 'read', 'discret-input' and 'holding'.
-Right now a warning is emmited when you compile the project but . This is just a warning and you can continue to use `modbus_function_code` .
-However once (if at all :)) the PR gets merged only `register_type` will be supported.
+Switching from using `modbus_function_code` to `register_type`. The code is picking best function code on it's own.
+Configuration is also less confusing. The options are `coil`, `read`, `discret-input` and `holding`.
+Right now a warning is emmited when you compile the project but . This is just a warning and you can continue to use `modbus_function_code` for now. But then updating is easy - see the sed script below.
+However once (if at all :smiley:) the PR gets merged only `register_type` will be supported.
 
 The options are he options are 'coil', 'read', 'discret-input' and 'holding'.
 
