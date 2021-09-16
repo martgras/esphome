@@ -1,4 +1,6 @@
 #include "pn532.h"
+
+#include <memory>
 #include "esphome/core/log.h"
 
 // Based on:
