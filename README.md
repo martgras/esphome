@@ -4,7 +4,7 @@
 
 **This fork of esphome adds a modbus component that allows controlling devices via modbus/rs485**
 
-See [modbus documentation](esphome/components/modbus_controller/readme.md) for more details
+See [modbus documentation](https://github.com/martgras/esphome/blob/testing/esphome/components/modbus_controller/readme.md) for more details
 
 
 **ESPHome Documentation:** https://esphome.io/
