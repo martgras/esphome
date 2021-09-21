@@ -53,7 +53,7 @@ void LightState::setup() {
     case LIGHT_RESTORE_DEFAULT_ON:
     case LIGHT_RESTORE_INVERTED_DEFAULT_OFF:
     case LIGHT_RESTORE_INVERTED_DEFAULT_ON:
-      this->rtc_ = global_preferences.make_preference<LightStateRTCState>(this->get_object_id_hash());
+      this->rtc_ = global_preferences->make_preference<LightStateRTCState>(this->get_object_id_hash());
       // Attempt to load from preferences, else fall back to default values
       if (!this->rtc_.load(&recovered)) {
         recovered.state = false;
@@ -121,6 +121,9 @@ void LightState::loop() {
     }
 
     if (this->transformer_->is_finished()) {
+      // if the transition has written directly to the output, current_values is outdated, so update it
+      this->current_values = this->transformer_->get_target_values();
+
       this->transformer_->stop();
       this->transformer_ = nullptr;
       this->target_state_reached_callback_.call();
