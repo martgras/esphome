@@ -325,7 +325,7 @@ void OTAComponent::handle_() {
     ESP_LOGV(TAG, "Auth: Result is %s", sbuf);
 
     // Receive result, 32 bytes hex MD5
-    if (!this->writeall_(buf + 64, 32)) {
+    if (!this->readall_(buf + 64, 32)) {
       ESP_LOGW(TAG, "Auth: Reading response failed!");
       goto error;
     }
@@ -388,8 +388,10 @@ void OTAComponent::handle_() {
     size_t requested = std::min(sizeof(buf), ota_size - total);
     ssize_t read = this->client_->read(buf, requested);
     if (read == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK)
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        delay(1);
         continue;
+      }
       ESP_LOGW(TAG, "Error receiving data for update, errno: %d", errno);
       goto error;
     }
