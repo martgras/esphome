@@ -25,12 +25,9 @@ void ModbusSensor::parse_and_publish(const std::vector<uint8_t> &data) {
     if (val.has_value()) {
       ESP_LOGV(TAG, "Value overwritten by lambda");
       result = val.value();
-    } else {
-      ESP_LOGV(TAG, "publishing handled by lambda - parse and publish");
-      return;
     }
   }
-  ESP_LOGD(TAG, " SENSOR : new: %.02f", result);
+  ESP_LOGD(TAG, "Sensor new state: %.02f", result);
   // this->sensor_->raw_state = result;
   this->publish_state(result);
 }
