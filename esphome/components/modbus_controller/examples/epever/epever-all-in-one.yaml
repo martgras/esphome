@@ -1093,29 +1093,15 @@ sensor:
 #    filters:
 #      - lambda: return id(length_of_night_minutes).state  + ( 60 * x);
 
-  - platform: modbus_controller
-    modbus_controller_id: epever
-    id: battery_capacity
-    address: 0x9001
-    name: "Battery Capacity"
-    register_type: holding
-    value_type: U_WORD
-    lambda: !lambda |-
-      ESP_LOGI("","Lambda incoming value=%f - data array size is %d",x,data.size());
-      ESP_LOGI("","Sensor properties: adress = 0x%X, offset = 0x%X value type=%d",item->start_address,item->offset,item->sensor_value_type);
-      int i=0 ;
-      for (auto val : data) {
-        ESP_LOGI("","data[%d]=0x%02X (%d)",i++ ,data[i],data[i]);
-      }
-      return x ;
-
 number:
   - platform: modbus_controller
     modbus_controller_id: epever
-    modbus_sensor_id: battery_capacity
     id: battery_capacity_number
     name: "Battery Cap Number"
-    lambda: !lambda |-
+    address: 0x9001
+    value_type: U_WORD
+    lambda: "return  x * 1.0; "
+    write_lambda: |-
       ESP_LOGD("main","Modbus Number incoming value = %f",x);
       uint16_t b_capacity = x ;
       payload.push_back(b_capacity);
