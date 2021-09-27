@@ -15,6 +15,7 @@ from esphome.const import (
     CONF_OFFSET,
     CONF_NAME,
 )
+from esphome.cpp_helpers import logging
 from .const import (
     CONF_CTRL_PIN,
     CONF_VALUE_TYPE,
@@ -171,8 +172,16 @@ CONFIG_SCHEMA = cv.All(
     .extend(uart.UART_DEVICE_SCHEMA)
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 
 def to_code(config):
+    _LOGGER.warning(
+        "You are using an older version of the modbus_controller component. "
+        "It is now offically part of esphome. Upgrading is recommmended"
+        "For details see https://github.com/martgras/esphome/tree/testing/esphome/components/modbus_controller#readme"
+    )
+
     var = cg.new_Pvariable(config[CONF_ID], config[CONF_COMMAND_THROTTLE])
     yield cg.add(var.set_command_throttle(config[CONF_COMMAND_THROTTLE]))
     yield cg.register_component(var, config)
