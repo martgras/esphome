@@ -4,11 +4,21 @@
 
 **This fork of esphome adds a modbus component that allows controlling devices via modbus/rs485**
 
-See [modbus documentation](https://github.com/martgras/esphome/blob/testing/esphome/components/modbus_controller/readme.md) for more details
 
+The modbus_controller component is now part of esphome see https://github.com/esphome/esphome/pull/1779
+If you are still using the modbus_controller code from the modbus_component branch please note that there are a couple of changes in the YAML definitions.
+See [modbus documentation](https://github.com/martgras/esphome/blob/testing/esphome/components/modbus_controller/readme.md) for more details about the required changes.
 
-**ESPHome Documentation:** https://esphome.io/
+Please switch to the esphome dev branch or if you are using external components change it to 
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/esphome/esphome
+      ref: dev
+    components: [ modbus, modbus_controller ]
+```
 
-For issues, please go to [the issue tracker](https://github.com/esphome/issues/issues).
+There won't be new updates to the modbus_component branch (this branch). 
+I will continue to use the ['testing'](https://github.com/martgras/esphome/tree/testing) branch for new code but generally recommend switch over to https://github.com/esphome/esphome
 
-For feature requests, please see [feature requests](https://github.com/esphome/feature-requests/issues).
