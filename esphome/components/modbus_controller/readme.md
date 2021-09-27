@@ -10,6 +10,24 @@ Custom command can be sent to the device using lambdas.
 
 Tested using an EPEVER Tracer2210AN MPPT controller, Heidelberg Wallbox and PZEM-017
 
+## Note: Sep.27
+
+The modbus_controller component is now part of esphome see https://github.com/esphome/esphome/pull/1779
+
+Please switch to the esphome dev branch or if you are using external components change it to 
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/esphome/esphome
+      ref: dev
+    components: [ modbus, modbus_controller ]
+```
+
+There won't be new updates to the modbus_component branch.
+I will continue to use the ['testing'](https://github.com/martgras/esphome/tree/testing) branch ( (this branch) for new code but generally recommend switch over to https://github.com/esphome/esphome
+
+
 ## Note: Sep.15
 
 2 changes in this commit
