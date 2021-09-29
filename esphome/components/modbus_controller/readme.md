@@ -481,6 +481,9 @@ web_server:
 
 [Example config for the EPEVER controller](examples/epever/epever-all-in-one.yaml)
 
+[Example config for Heidelberg Wallbox](examples/heidelberg_wallbox/heidelberg_wb_example.yaml)
+file:///home/martin/esphomedev/esphome/esphome/components/modbus_controller/examples/heidelberg_wallbox/heidelberg_wb_example.yaml
+
 ### Format
 
 Define an register in YAML
