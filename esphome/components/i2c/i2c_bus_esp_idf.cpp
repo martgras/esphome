@@ -1,6 +1,7 @@
 #ifdef USE_ESP_IDF
 
 #include "i2c_bus_esp_idf.h"
+#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #include <cstring>
 
@@ -12,6 +13,8 @@ static const char *const TAG = "i2c.idf";
 void IDFI2CBus::setup() {
   static i2c_port_t next_port = 0;
   port_ = next_port++;
+
+  recover_();
 
   i2c_config_t conf{};
   memset(&conf, 0, sizeof(conf));
@@ -43,8 +46,8 @@ void IDFI2CBus::dump_config() {
   if (this->scan_) {
     ESP_LOGI(TAG, "Scanning i2c bus for active devices...");
     uint8_t found = 0;
-    for (uint8_t address = 1; address < 120; address++) {
-      auto err = readv(address, nullptr, 0);
+    for (uint8_t address = 8; address < 120; address++) {
+      auto err = writev(address, nullptr, 0);
 
       if (err == ERROR_OK) {
         ESP_LOGI(TAG, "Found i2c device at address 0x%02X", address);
@@ -139,6 +142,41 @@ ErrorCode IDFI2CBus::writev(uint8_t address, WriteBuffer *buffers, size_t cnt) {
     return ERROR_UNKNOWN;
   }
   return ERROR_OK;
+}
+
+void IDFI2CBus::recover_() {
+  // Perform I2C bus recovery, see
+  // https://www.analog.com/media/en/technical-documentation/application-notes/54305147357414AN686_0.pdf
+  // or see the linux kernel implementation, e.g.
+  // https://elixir.bootlin.com/linux/v5.14.6/source/drivers/i2c/i2c-core-base.c#L200
+
+  // try to get about 100kHz toggle frequency
+  const auto half_period_usec = 1000000 / 100000 / 2;
+  const auto recover_scl_periods = 9;
+  const gpio_num_t scl_pin = static_cast<gpio_num_t>(scl_pin_);
+
+  // configure scl as output
+  gpio_config_t conf{};
+  conf.pin_bit_mask = 1ULL << static_cast<uint32_t>(scl_pin_);
+  conf.mode = GPIO_MODE_OUTPUT;
+  conf.pull_up_en = GPIO_PULLUP_DISABLE;
+  conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+  conf.intr_type = GPIO_INTR_DISABLE;
+
+  gpio_config(&conf);
+
+  // set scl high
+  gpio_set_level(scl_pin, 1);
+
+  // in total generate 9 falling-rising edges
+  for (auto i = 0; i < recover_scl_periods; i++) {
+    delayMicroseconds(half_period_usec);
+    gpio_set_level(scl_pin, 0);
+    delayMicroseconds(half_period_usec);
+    gpio_set_level(scl_pin, 1);
+  }
+
+  delayMicroseconds(half_period_usec);
 }
 
 }  // namespace i2c
