@@ -22,3 +22,4 @@ external_components:
 There won't be new updates to the modbus_component branch (this branch). 
 I will continue to use the ['testing'](https://github.com/martgras/esphome/tree/testing) branch for new code but generally recommend switch over to https://github.com/esphome/esphome
 
+If you have a working modbus configuration I encourage you to add it to the [wiki](https://github.com/martgras/esphome/wiki) 
