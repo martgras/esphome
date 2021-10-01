@@ -7,7 +7,7 @@ namespace modbus_controller {
 static const char *const TAG = "modbus_controller.switch";
 
 void ModbusSwitch::setup() {
-  // value isn't required 
+  // value isn't required
   // without it we crash on save
   this->get_initial_state();
 }
@@ -34,9 +34,6 @@ void ModbusSwitch::parse_and_publish(const std::vector<uint8_t> &data) {
     if (val.has_value()) {
       ESP_LOGV(TAG, "Value overwritten by lambda");
       value = val.value();
-    } else {
-      ESP_LOGV(TAG, "publishing handled by lambda - parse and publish");
-      return;
     }
   }
 
