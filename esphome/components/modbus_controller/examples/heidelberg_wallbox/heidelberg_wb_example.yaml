@@ -316,33 +316,3 @@ sensor:
             esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0106, payload);
             heidelberg_wallbox_id01->queue_command(set_payload_command);
 
-binary_sensor:
-  - platform: homeassistant
-    entity_id: input_boolean.wb_remote_lock
-    id: wb_remote_lock
-    internal: true
-    on_state:
-      then:
-        - lambda: |-
-            uint16_t payload = 1;
-            if ( id(wb_remote_lock).state == true ) {
-              payload = 0;
-            }
-            ESP_LOGI("main", "set remote lock %d", payload);
-            esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0103, payload);
-            heidelberg_wallbox_id01->queue_command(set_payload_command);
-
-  - platform: homeassistant
-    entity_id: input_boolean.wb_standby_control
-    id: wb_standby_control
-    internal: true
-    on_state:
-      then:
-        - lambda: |-
-            uint16_t payload = 4;
-            if ( id(wb_standby_control).state == true ) {
-              payload = 0;
-            }
-            ESP_LOGI("main", "set standby control %d", payload);
-            esphome::modbus_controller::ModbusCommandItem set_payload_command = esphome::modbus_controller::ModbusCommandItem::create_write_single_command(heidelberg_wallbox_id01, 0x0102, payload);
-            heidelberg_wallbox_id01->queue_command(set_payload_command);

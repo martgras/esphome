@@ -8,7 +8,7 @@ external_components:
 
 substitutions:
   updates: 60s
-  dev: solarstation
+  dev: em340
 
 esphome:
   name: ${dev}
