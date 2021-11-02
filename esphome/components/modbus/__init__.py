@@ -17,6 +17,7 @@ ModbusDevice = modbus_ns.class_("ModbusDevice")
 MULTI_CONF = True
 
 CONF_MODBUS_ID = "modbus_id"
+CONF_UART_RX_TIMEOUT = "uart_rx_timeout"
 CONF_SEND_WAIT_TIME = "send_wait_time"
 
 CONFIG_SCHEMA = (
@@ -26,6 +27,9 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_FLOW_CONTROL_PIN): pins.gpio_output_pin_schema,
             cv.Optional(
                 CONF_SEND_WAIT_TIME, default="250ms"
+            ): cv.positive_time_period_milliseconds,
+            cv.Optional(
+                CONF_UART_RX_TIMEOUT, default="50ms"
             ): cv.positive_time_period_milliseconds,
         }
     )
@@ -47,6 +51,9 @@ async def to_code(config):
 
     if CONF_SEND_WAIT_TIME in config:
         cg.add(var.set_send_wait_time(config[CONF_SEND_WAIT_TIME]))
+
+    if CONF_UART_RX_TIMEOUT in config:
+        cg.add(var.set_uart_rx_timeout(config[CONF_UART_RX_TIMEOUT]))
 
 
 def modbus_device_schema(default_address):

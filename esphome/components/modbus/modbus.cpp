@@ -15,7 +15,7 @@ void Modbus::setup() {
 void Modbus::loop() {
   const uint32_t now = millis();
 
-  if (now - this->last_modbus_byte_ > 50) {
+  if (now - this->last_modbus_byte_ > uart_rx_timeout_) {
     this->rx_buffer_.clear();
     this->last_modbus_byte_ = now;
   }
