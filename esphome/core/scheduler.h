@@ -14,7 +14,9 @@ class Scheduler {
   bool cancel_timeout(Component *component, const std::string &name);
   void set_interval(Component *component, const std::string &name, uint32_t interval, std::function<void()> &&func);
   bool cancel_interval(Component *component, const std::string &name);
-
+  void set_retry(Component *component, const std::string &name, uint32_t interval, bool backoff_exponential,
+                 std::function<bool()> &&func);
+  bool cancel_retry(Component *component, const std::string &name);
   optional<uint32_t> next_schedule_in();
 
   void call();
@@ -25,7 +27,7 @@ class Scheduler {
   struct SchedulerItem {
     Component *component;
     std::string name;
-    enum Type { TIMEOUT, INTERVAL } type;
+    enum Type { TIMEOUT, INTERVAL, RETRY } type;
     union {
       uint32_t interval;
       uint32_t timeout;
@@ -33,6 +35,8 @@ class Scheduler {
     uint32_t last_execution;
     std::function<void()> f;
     bool remove;
+    bool lambda_result;
+    bool backoff_exponential;
     uint8_t last_execution_major;
 
     inline uint32_t next_execution() { return this->last_execution + this->timeout; }

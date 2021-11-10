@@ -72,6 +72,42 @@ void HOT Scheduler::set_interval(Component *component, const std::string &name, 
 bool HOT Scheduler::cancel_interval(Component *component, const std::string &name) {
   return this->cancel_item_(component, name, SchedulerItem::INTERVAL);
 }
+void HOT Scheduler::set_retry(Component *component, const std::string &name, uint32_t interval,
+                              bool backoff_exponential, std::function<bool()> &&func) {
+  const uint32_t now = this->millis_();
+
+  if (!name.empty())
+    this->cancel_interval(component, name);
+
+  if (interval == SCHEDULER_DONT_RUN)
+    return;
+
+  // only put offset in lower half
+  uint32_t offset = 0;
+  if (interval != 0)
+    offset = (random_uint32() % interval) / 2;
+
+  ESP_LOGVV(TAG, "set_retryl(name='%s', interval=%u, offset=%u, backoff_exponential=%z )", name.c_str(), interval,
+            offset, backoff_exponential);
+
+  auto item = make_unique<SchedulerItem>();
+  item->component = component;
+  item->name = name;
+  item->type = SchedulerItem::RETRY;
+  item->interval = interval;
+  item->backoff_exponential = backoff_exponential;
+  item->last_execution = now - offset - interval;
+  item->last_execution_major = this->millis_major_;
+  if (item->last_execution > now)
+    item->last_execution_major--;
+  item->f = [&item, func] { item->lambda_result = func(); };
+  item->remove = false;
+  this->push_(std::move(item));
+}
+
+bool HOT Scheduler::cancel_retry(Component *component, const std::string &name) {
+  return this->cancel_item_(component, name, SchedulerItem::RETRY);
+}
 optional<uint32_t> HOT Scheduler::next_schedule_in() {
   if (this->empty_())
     return {};
@@ -185,11 +221,24 @@ void IRAM_ATTR HOT Scheduler::call() {
         }
         this->push_(std::move(item));
       }
+      if (item->type == SchedulerItem::RETRY) {
+        if (item->interval != 0 && item->lambda_result == false) {
+          const uint32_t before = item->last_execution;
+          const uint32_t amount = (now - item->last_execution) / item->interval;
+          item->last_execution += amount * item->interval;
+          if (item->backoff_exponential)
+            item->interval *= 2;
+          if (item->last_execution < before)
+            item->last_execution_major++;
+        }
+        this->push_(std::move(item));
+      }
     }
   }
 
   this->process_to_add();
 }
+
 void HOT Scheduler::process_to_add() {
   for (auto &it : this->to_add_) {
     if (it->remove) {
