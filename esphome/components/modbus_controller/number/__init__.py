@@ -21,6 +21,7 @@ from .. import (
 
 from ..const import (
     CONF_BITMASK,
+    CONF_CUSTOM_COMMAND,
     CONF_FORCE_NEW_RANGE,
     CONF_MODBUS_CONTROLLER_ID,
     CONF_SKIP_UPDATES,
@@ -47,25 +48,32 @@ def validate_min_max(config):
     return config
 
 
-CONFIG_SCHEMA = cv.All(
-    number.NUMBER_SCHEMA.extend(
-        ModbusItemBaseSchema.extend(
-            {
-                cv.GenerateID(): cv.declare_id(ModbusNumber),
-                cv.Optional(CONF_VALUE_TYPE, default="U_WORD"): cv.enum(
-                    SENSOR_VALUE_TYPE
-                ),
-                cv.Optional(CONF_WRITE_LAMBDA): cv.returning_lambda,
-                # 24 bits are the maximum value for fp32 before precison is lost
-                # 0x00FFFFFF = 16777215
-                cv.Optional(CONF_MAX_VALUE, default=16777215.0): cv.float_,
-                cv.Optional(CONF_MIN_VALUE, default=-16777215.0): cv.float_,
-                cv.Optional(CONF_STEP, default=1): cv.positive_float,
-                cv.Optional(CONF_MULTIPLY, default=1.0): cv.float_,
-            }
+def validate_modbus_number(config):
+    if CONF_CUSTOM_COMMAND not in config and CONF_ADDRESS not in config:
+        raise cv.Invalid(
+            f" {CONF_ADDRESS} is a required property if '{CONF_CUSTOM_COMMAND}:' isn't used"
         )
-    ).extend(cv.polling_component_schema("60s")),
+    return config
+
+
+CONFIG_SCHEMA = cv.All(
+    number.NUMBER_SCHEMA.extend(ModbusItemBaseSchema)
+    .extend(
+        {
+            cv.GenerateID(): cv.declare_id(ModbusNumber),
+            cv.Optional(CONF_VALUE_TYPE, default="U_WORD"): cv.enum(SENSOR_VALUE_TYPE),
+            cv.Optional(CONF_WRITE_LAMBDA): cv.returning_lambda,
+            # 24 bits are the maximum value for fp32 before precison is lost
+            # 0x00FFFFFF = 16777215
+            cv.Optional(CONF_MAX_VALUE, default=16777215.0): cv.float_,
+            cv.Optional(CONF_MIN_VALUE, default=-16777215.0): cv.float_,
+            cv.Optional(CONF_STEP, default=1): cv.positive_float,
+            cv.Optional(CONF_MULTIPLY, default=1.0): cv.float_,
+        }
+    )
+    .extend(cv.polling_component_schema("60s")),
     validate_min_max,
+    validate_modbus_number,
 )
 
 
