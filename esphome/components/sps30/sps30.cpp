@@ -22,45 +22,54 @@ static const uint8_t MAX_SKIPPED_DATA_CYCLES_BEFORE_ERROR = 5;
 
 void SPS30Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up sps30...");
-  this->write_command_(SPS30_CMD_SOFT_RESET);
-  /// Deferred Sensor initialization
-  this->set_timeout(500, [this]() {
-    /// Firmware version identification
-    if (!this->write_command_(SPS30_CMD_GET_FIRMWARE_VERSION)) {
-      this->error_code_ = FIRMWARE_VERSION_REQUEST_FAILED;
-      this->mark_failed();
-      return;
+  /// give the sensor 500 ms to enter idle mode
+//  this->set_timeout(500, [this]() {
+    if (!this->write_command_(SPS30_CMD_SOFT_RESET)) {
+      ESP_LOGW(TAG, "SPS Reset failed") ;
     }
 
-    uint16_t raw_firmware_version[4];
-    if (!this->read_data_(raw_firmware_version, 4)) {
-      this->error_code_ = FIRMWARE_VERSION_READ_FAILED;
-      this->mark_failed();
-      return;
-    }
-    ESP_LOGD(TAG, "  Firmware version v%0d.%02d", (raw_firmware_version[0] >> 8),
-             uint16_t(raw_firmware_version[0] & 0xFF));
-    /// Serial number identification
-    if (!this->write_command_(SPS30_CMD_GET_SERIAL_NUMBER)) {
-      this->error_code_ = SERIAL_NUMBER_REQUEST_FAILED;
-      this->mark_failed();
-      return;
-    }
+    /// Deferred Sensor initialization
+    ///   According to the datasheet response to reset is < 100ms.
+    ///   use 200ms to be on the safe side
+    this->set_timeout(200, [this]() {
+      /// Firmware version identification
+      if (!this->write_command_(SPS30_CMD_GET_FIRMWARE_VERSION)) {
+        this->error_code_ = FIRMWARE_VERSION_REQUEST_FAILED;
+        this->mark_failed();
+        ESP_LOGW(TAG,"SPS Firmware failed") ;        
+        return;
+      }
 
-    uint16_t raw_serial_number[8];
-    if (!this->read_data_(raw_serial_number, 8)) {
-      this->error_code_ = SERIAL_NUMBER_READ_FAILED;
-      this->mark_failed();
-      return;
-    }
+      uint16_t raw_firmware_version[4];
+      if (!this->read_data_(raw_firmware_version, 4)) {
+        this->error_code_ = FIRMWARE_VERSION_READ_FAILED;
+        this->mark_failed();
+        return;
+      }
+      ESP_LOGD(TAG, "  Firmware version v%0d.%02d", (raw_firmware_version[0] >> 8),
+               uint16_t(raw_firmware_version[0] & 0xFF));
+      /// Serial number identification
+      if (!this->write_command_(SPS30_CMD_GET_SERIAL_NUMBER)) {
+        this->error_code_ = SERIAL_NUMBER_REQUEST_FAILED;
+        this->mark_failed();
+        return;
+      }
 
-    for (size_t i = 0; i < 8; ++i) {
-      this->serial_number_[i * 2] = static_cast<char>(raw_serial_number[i] >> 8);
-      this->serial_number_[i * 2 + 1] = uint16_t(uint16_t(raw_serial_number[i] & 0xFF));
-    }
-    ESP_LOGD(TAG, "  Serial Number: '%s'", this->serial_number_);
-    this->start_continuous_measurement_();
-  });
+      uint16_t raw_serial_number[8];
+      if (!this->read_data_(raw_serial_number, 8)) {
+        this->error_code_ = SERIAL_NUMBER_READ_FAILED;
+        this->mark_failed();
+        return;
+      }
+
+      for (size_t i = 0; i < 8; ++i) {
+        this->serial_number_[i * 2] = static_cast<char>(raw_serial_number[i] >> 8);
+        this->serial_number_[i * 2 + 1] = uint16_t(uint16_t(raw_serial_number[i] & 0xFF));
+      }
+      ESP_LOGD(TAG, "  Serial Number: '%s'", this->serial_number_);
+      this->start_continuous_measurement_();
+    });
+  //});
 }
 
 void SPS30Component::dump_config() {
