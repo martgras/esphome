@@ -60,9 +60,9 @@ void AirQualityComponent::update() {
     }
   }
   if (this->caqi_sensor_ != nullptr) {
-    int8_t aqi_value = this->calulate_aqi_(CAQI_TYPE);
-    if (aqi_value != -1) {
-      this->caqi_sensor_->publish_state(aqi_value);
+    int8_t caqi_value = this->calulate_aqi_(CAQI_TYPE);
+    if (caqi_value != -1) {
+      this->caqi_sensor_->publish_state(caqi_value);
     }
   }
 
