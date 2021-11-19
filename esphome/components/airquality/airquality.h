@@ -15,6 +15,7 @@ class AirQualityComponent : public PollingComponent {
   void set_pm_2_5_sensor(sensor::Sensor *pm_2_5_sensor) { pm_2_5_sensor_ = pm_2_5_sensor; }
   void set_pm_10_0_sensor(sensor::Sensor *pm_10_0_sensor) { pm_10_0_sensor_ = pm_10_0_sensor; }
   void set_aqi_sensor(sensor::Sensor *aqi_sensor) { aqi_sensor_ = aqi_sensor; }
+  void set_caqi_sensor(sensor::Sensor *caqi_sensor) { caqi_sensor_ = caqi_sensor; }
 
   void set_aqi_calculation_type(AQICalculatorType aqi_calc_type) { aqi_calc_type_ = aqi_calc_type; }
 
@@ -24,7 +25,7 @@ class AirQualityComponent : public PollingComponent {
   void update() override;
 
  protected:
-  uint8_t calulate_aqi_();
+  uint8_t calulate_aqi_(AQICalculatorType aqi_calc_type);
   void on_pm_1_0_callback_(float val) { pm_1_0_value_ = val; }
   void on_pm_2_5_callback_(float val) { pm_2_5_value_ = val; }
   void on_pm_10_0_callback_(float val) { pm_10_0_value_ = val; }
@@ -37,6 +38,7 @@ class AirQualityComponent : public PollingComponent {
   sensor::Sensor *pm_2_5_sensor_{nullptr};
   sensor::Sensor *pm_10_0_sensor_{nullptr};
   sensor::Sensor *aqi_sensor_{nullptr};
+  sensor::Sensor *caqi_sensor_{nullptr};
 
   AQICalculatorType aqi_calc_type_;
   AQICalculatorFactory aqi_calculator_factory_ = AQICalculatorFactory();

@@ -15,7 +15,9 @@ airquality_ns = cg.esphome_ns.namespace("airquality")
 AirQualityComponent = airquality_ns.class_("AirQualityComponent", cg.PollingComponent)
 AQICalculatorType = airquality_ns.enum("AQICalculatorType")
 
+
 CONF_AQI = "aqi"
+CONF_CAQI = "caqi"
 CONF_CALCULATION_TYPE = "calculation_type"
 UNIT_INDEX = "index"
 
@@ -53,12 +55,13 @@ CONFIG_SCHEMA = cv.All(
                 accuracy_decimals=0,
                 # device_class=DEVICE_CLASS_AQI,
                 state_class=STATE_CLASS_MEASUREMENT,
-            ).extend(
-                {
-                    cv.Required(CONF_CALCULATION_TYPE): cv.enum(
-                        AQI_CALCULATION_TYPE, upper=True
-                    ),
-                }
+            ),
+            cv.Optional(CONF_CAQI): sensor.sensor_schema(
+                unit_of_measurement=UNIT_INDEX,
+                icon=ICON_CHEMICAL_WEAPON,
+                accuracy_decimals=0,
+                # device_class=DEVICE_CLASS_AQI,
+                state_class=STATE_CLASS_MEASUREMENT,
             ),
         }
     ).extend(cv.polling_component_schema("60s")),
@@ -85,4 +88,6 @@ async def to_code(config):
     if CONF_AQI in config:
         sens = await sensor.new_sensor(config[CONF_AQI])
         cg.add(var.set_aqi_sensor(sens))
-        cg.add(var.set_aqi_calculation_type(config[CONF_AQI][CONF_CALCULATION_TYPE]))
+    if CONF_AQI in config:
+        sens = await sensor.new_sensor(config[CONF_CAQI])
+        cg.add(var.set_caqi_sensor(sens))

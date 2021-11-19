@@ -19,7 +19,9 @@ sensor:
     pm_10_0: sps_pm_10_0
     aqi:
       name: "AQI"
-      calculation_type: "CAQI"
+#      calculation_type: "CAQI"
+    caqi:
+      name: "AQI"
 
   - platform: sps30
     pm_1_0:

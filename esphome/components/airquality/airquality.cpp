@@ -53,21 +53,29 @@ void AirQualityComponent::update() {
     pm_10_0_value_ = this->pm_10_0_sensor_->state;
   }
 
-  int8_t aqi_value = this->calulate_aqi_();
-
-  if (aqi_value != -1) {
-    this->aqi_sensor_->publish_state(aqi_value);
+  if (this->aqi_sensor_ != nullptr) {
+    int8_t aqi_value = this->calulate_aqi_(AQI_TYPE);
+    if (aqi_value != -1) {
+      this->aqi_sensor_->publish_state(aqi_value);
+    }
   }
+  if (this->caqi_sensor_ != nullptr) {
+    int8_t aqi_value = this->calulate_aqi_(CAQI_TYPE);
+    if (aqi_value != -1) {
+      this->caqi_sensor_->publish_state(aqi_value);
+    }
+  }
+
   this->status_clear_warning();
 }
 
-uint8_t AirQualityComponent::calulate_aqi_() {
-  if ( pm_2_5_value_ != NAN && pm_10_0_value_ != NAN) {
+uint8_t AirQualityComponent::calulate_aqi_(AQICalculatorType aqi_calc_type) {
+  if (pm_2_5_value_ != NAN && pm_10_0_value_ != NAN) {
     int16_t pm_2_5_value = -1;
     int16_t pm_10_0_value = -1;
     pm_2_5_value = static_cast<int16_t>(this->pm_2_5_value_);
     pm_10_0_value = static_cast<int16_t>(this->pm_10_0_value_);
-    AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(this->aqi_calc_type_);
+    AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(aqi_calc_type);
     return calculator->get_aqi(pm_2_5_value, pm_10_0_value);
   } else {
     return -1;
