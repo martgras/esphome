@@ -20,7 +20,6 @@ api:
   
 sensor:
   - platform: airquality
-    pm_1_0: sps_pm_1_0
     pm_2_5: sps_pm_2_5
     pm_10_0: sps_pm_10_0
     aqi:
@@ -29,6 +28,7 @@ sensor:
     caqi:
       name: "CAQI"
 
+  
 
   - platform: sps30
     pm_1_0:

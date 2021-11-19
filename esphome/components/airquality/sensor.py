@@ -5,7 +5,7 @@ from esphome.const import (
     CONF_ID,
     CONF_PM_2_5,
     CONF_PM_10_0,
-    CONF_PM_1_0,
+    #  CONF_PM_1_0,
     STATE_CLASS_MEASUREMENT,
     ICON_CHEMICAL_WEAPON,
 )
@@ -39,7 +39,7 @@ CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(AirQualityComponent),
-            cv.Optional(CONF_PM_1_0): cv.use_id(sensor.Sensor),
+            # cv.Optional(CONF_PM_1_0): cv.use_id(sensor.Sensor),
             cv.Optional(CONF_PM_2_5): cv.use_id(sensor.Sensor),
             cv.Optional(CONF_PM_10_0): cv.use_id(sensor.Sensor),
             #  VOC and CO2 TBD
@@ -64,7 +64,7 @@ CONFIG_SCHEMA = cv.All(
                 state_class=STATE_CLASS_MEASUREMENT,
             ),
         }
-    ).extend(cv.polling_component_schema("60s")),
+    ).extend(cv.COMPONENT_SCHEMA),
     _validate,
 )
 
@@ -73,16 +73,16 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    if CONF_PM_1_0 in config:
-        sens = await cg.get_variable(config[CONF_PM_1_0])
-        cg.add(var.set_pm_1_0_sensor(sens))
+    #    if CONF_PM_1_0 in config:
+    #        sens = await cg.get_variable(config[CONF_PM_1_0])
+    #        cg.add(var.set_pm_1_0_sensor(sens))
 
     if CONF_PM_2_5 in config:
-        sens = await cg.get_variable(config[CONF_PM_1_0])
+        sens = await cg.get_variable(config[CONF_PM_2_5])
         cg.add(var.set_pm_2_5_sensor(sens))
 
     if CONF_PM_10_0 in config:
-        sens = await cg.get_variable(config[CONF_PM_1_0])
+        sens = await cg.get_variable(config[CONF_PM_10_0])
         cg.add(var.set_pm_10_0_sensor(sens))
 
     if CONF_AQI in config:
