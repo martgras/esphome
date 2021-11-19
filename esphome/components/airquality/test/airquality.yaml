@@ -7,11 +7,17 @@ esp32:
     #type: esp-idf
 
 logger:
-
+  level: DEBUG
 i2c:
   sda: 21
   scl: 22
 
+wifi:
+  ssid: !secret wifi_sid
+  password: !secret wifi_password
+
+api:
+  
 sensor:
   - platform: airquality
     pm_1_0: sps_pm_1_0
@@ -21,7 +27,8 @@ sensor:
       name: "AQI"
 #      calculation_type: "CAQI"
     caqi:
-      name: "AQI"
+      name: "CAQI"
+
 
   - platform: sps30
     pm_1_0:
@@ -53,3 +60,5 @@ sensor:
       id: pmc_10_0
     address: 0x69
     update_interval: 10s
+
+web_server:
