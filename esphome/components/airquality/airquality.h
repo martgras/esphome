@@ -24,6 +24,15 @@ class AirQualityComponent : public PollingComponent {
   void update() override;
 
  protected:
+  uint8_t calulate_aqi_();
+  void on_pm_1_0_callback_(float val) { pm_1_0_value_ = val; }
+  void on_pm_2_5_callback_(float val) { pm_2_5_value_ = val; }
+  void on_pm_10_0_callback_(float val) { pm_10_0_value_ = val; }
+
+  float pm_1_0_value_{NAN};
+  float pm_2_5_value_{NAN};
+  float pm_10_0_value_{NAN};
+
   sensor::Sensor *pm_1_0_sensor_{nullptr};
   sensor::Sensor *pm_2_5_sensor_{nullptr};
   sensor::Sensor *pm_10_0_sensor_{nullptr};
