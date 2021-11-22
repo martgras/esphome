@@ -19,7 +19,7 @@ AQICalculatorType = airquality_ns.enum("AQICalculatorType")
 CONF_AQI = "aqi"
 CONF_CAQI = "caqi"
 CONF_CALCULATION_TYPE = "calculation_type"
-UNIT_INDEX = "index"
+CONF_PUBLISH_WINDOW = "publish_window"
 
 AQI_CALCULATION_TYPE = {
     "CAQI": AQICalculatorType.CAQI_TYPE,
@@ -50,19 +50,20 @@ CONFIG_SCHEMA = cv.All(
             #                sensor.Sensor
             #            ),
             cv.Optional(CONF_AQI): sensor.sensor_schema(
-                unit_of_measurement=UNIT_INDEX,
                 icon=ICON_CHEMICAL_WEAPON,
                 accuracy_decimals=0,
                 # device_class=DEVICE_CLASS_AQI,
                 state_class=STATE_CLASS_MEASUREMENT,
             ),
             cv.Optional(CONF_CAQI): sensor.sensor_schema(
-                unit_of_measurement=UNIT_INDEX,
                 icon=ICON_CHEMICAL_WEAPON,
                 accuracy_decimals=0,
                 # device_class=DEVICE_CLASS_AQI,
                 state_class=STATE_CLASS_MEASUREMENT,
             ),
+            cv.Optional(
+                CONF_PUBLISH_WINDOW, default="500ms"
+            ): cv.positive_time_period_milliseconds,
         }
     ).extend(cv.COMPONENT_SCHEMA),
     _validate,
@@ -76,7 +77,7 @@ async def to_code(config):
     #    if CONF_PM_1_0 in config:
     #        sens = await cg.get_variable(config[CONF_PM_1_0])
     #        cg.add(var.set_pm_1_0_sensor(sens))
-
+    cg.add(var.set_publish_window(config[CONF_PUBLISH_WINDOW]))
     if CONF_PM_2_5 in config:
         sens = await cg.get_variable(config[CONF_PM_2_5])
         cg.add(var.set_pm_2_5_sensor(sens))
