@@ -25,6 +25,7 @@ class CAQICalculator : public AbstractAQICalculator {
   int index_grid_[AMOUNT_OF_LEVELS][2] = {{0, 25}, {26, 50}, {51, 75}, {76, 100}, {101, 600}};
 
   // Note must be defined using the order of enum Pollutant
+  // Based on revisised CAQI  - City Background hourly
   const int calculation_grids_[(Pollutant::SO2 + 1)][AMOUNT_OF_LEVELS][2] = {
       // PM25
       {{0, 15}, {16, 30}, {31, 55}, {56, 110}, {111, 600}},
@@ -34,8 +35,8 @@ class CAQICalculator : public AbstractAQICalculator {
       {{0, 50}, {51, 100}, {101, 200}, {201, 400}, {400, 600}},
       //  O3
       {{0, 60}, {61, 120}, {121, 180}, {181, 240}, {241, 600}},
-      // CO - 8h avg
-      {{0, 5}, {6, 8}, {9, 10}, {11, 20}, {21, 600}},
+      // CO 
+      {{0, 5000}, {5001, 7500}, {75001, 10000}, {10001, 20000}, {20000, 30000}},
       // SO2 1h avg
       {{0, 50}, {51, 100}, {101, 350}, {350, 500}, {501, 600}}};
 
