@@ -5,7 +5,6 @@ from esphome.const import (
     CONF_ID,
     CONF_PM_2_5,
     CONF_PM_10_0,
-    #  CONF_PM_1_0,
     STATE_CLASS_MEASUREMENT,
     ICON_CHEMICAL_WEAPON,
 )
@@ -18,6 +17,7 @@ AQICalculatorType = airquality_ns.enum("AQICalculatorType")
 
 CONF_AQI = "aqi"
 CONF_CAQI = "caqi"
+CONF_NOWCAST = "nowcast"
 CONF_CALCULATION_TYPE = "calculation_type"
 CONF_PUBLISH_WINDOW = "publish_window"
 
@@ -61,6 +61,12 @@ CONFIG_SCHEMA = cv.All(
                 # device_class=DEVICE_CLASS_AQI,
                 state_class=STATE_CLASS_MEASUREMENT,
             ),
+            cv.Optional(CONF_NOWCAST): sensor.sensor_schema(
+                icon=ICON_CHEMICAL_WEAPON,
+                accuracy_decimals=0,
+                # device_class=DEVICE_CLASS_AQI,
+                state_class=STATE_CLASS_MEASUREMENT,
+            ),
             cv.Optional(
                 CONF_PUBLISH_WINDOW, default="500ms"
             ): cv.positive_time_period_milliseconds,
@@ -89,6 +95,9 @@ async def to_code(config):
     if CONF_AQI in config:
         sens = await sensor.new_sensor(config[CONF_AQI])
         cg.add(var.set_aqi_sensor(sens))
-    if CONF_AQI in config:
+    if CONF_CAQI in config:
         sens = await sensor.new_sensor(config[CONF_CAQI])
         cg.add(var.set_caqi_sensor(sens))
+    if CONF_NOWCAST in config:
+        sens = await sensor.new_sensor(config[CONF_NOWCAST])
+        cg.add(var.set_nowcast_sensor(sens))

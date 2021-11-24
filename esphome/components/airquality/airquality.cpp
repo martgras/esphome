@@ -116,18 +116,26 @@ void AirQualityComponent::publish_data_() {
         ESP_LOGD(TAG, "History %d  %d %f %f %f %d", it.first, i, a.avg, a.maximum, a.minimum, a.samples);
       }
     }
-    auto v = get_nowcast_index_(PM10);
     if (this->aqi_sensor_ != nullptr) {
-      int8_t aqi_value = this->calulate_aqi_(AQI_TYPE);
+      int16_t aqi_value = this->calulate_aqi_(AQI_TYPE);
       if (aqi_value != -1) {
         this->aqi_sensor_->publish_state(aqi_value);
       }
     }
     if (this->caqi_sensor_ != nullptr) {
-      int8_t caqi_value = this->calulate_aqi_(CAQI_TYPE);
+      int16_t caqi_value = this->calulate_aqi_(CAQI_TYPE);
       if (caqi_value != -1) {
         this->caqi_sensor_->publish_state(caqi_value);
       }
+    }
+    if (this->nowcast_sensor_ != nullptr) {
+      uint16_t aqi_value = 0;
+      // loop pver all polutants configured
+      for (auto const &it : this->source_sensors_) {
+        auto sensor_value = this->source_sensor_values_[it.first];
+        aqi_value = std::max(aqi_value, get_nowcast_index_(it.first));
+      }
+      this->nowcast_sensor_->publish_state(aqi_value);
     }
     this->in_publish_ = false;
   });

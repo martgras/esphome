@@ -52,8 +52,10 @@ class AirQualityComponent : public Component {
   void set_pm_10_0_sensor(sensor::Sensor *pm_10_0_sensor) { source_sensors_.emplace(PM10, pm_10_0_sensor); }
   void set_aqi_sensor(sensor::Sensor *aqi_sensor) { aqi_sensor_ = aqi_sensor; }
   void set_caqi_sensor(sensor::Sensor *caqi_sensor) { caqi_sensor_ = caqi_sensor; }
+  void set_nowcast_sensor(sensor::Sensor *nowcast_sensor) { nowcast_sensor_ = nowcast_sensor; }
 
   void set_aqi_calculation_type(AQICalculatorType aqi_calc_type) { aqi_calc_type_ = aqi_calc_type; }
+
   void set_publish_window(uint32_t publish_window) { this->publish_window_ = publish_window; }
 
   void setup() override;
@@ -71,6 +73,7 @@ class AirQualityComponent : public Component {
 
   sensor::Sensor *aqi_sensor_{nullptr};
   sensor::Sensor *caqi_sensor_{nullptr};
+  sensor::Sensor *nowcast_sensor_{nullptr};
   // delay in ms between the first value callback and publishing
   // used to reduce publishes when source sensors are updated frequently
   uint32_t publish_window_{500};
