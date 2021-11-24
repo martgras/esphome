@@ -34,6 +34,57 @@ const char *get_pollutant_name(Pollutant p) {
   return "";
 }
 
+// average of the the averages of the last hours
+float Measurements::get_avg(uint8_t hours) {
+  float avg = 0;
+  uint8_t idx = 0;
+  // stop at the first NAN in history
+  // marks the end of the history
+  while (!std::isnan(value_history_[idx].avg)) {
+    avg += value_history_[idx].avg;
+    idx++;
+  }
+  return avg / static_cast<float>(idx);
+}
+
+// average of the the maximum of the last hours
+float Measurements::get_max_avg(uint8_t hours) {
+  float avg = 0;
+  uint8_t idx = 0;
+  while (!std::isnan(value_history_[idx].maximum)) {
+    avg += value_history_[idx].maximum;
+    idx++;
+  }
+  return avg / static_cast<float>(idx);
+}
+
+float Measurements::add_to_history(float val) {
+  auto t_now = std::time(nullptr);
+  uint8_t hour = ::localtime(&t_now)->tm_hour;
+  auto m = this->value_history_[hour];
+
+  if (std::isnan(m.maximum))
+    m.maximum = val;
+  else if (val > m.maximum)
+    m.maximum = val;
+
+  if (std::isnan(m.minimum))
+    m.minimum = val;
+  else if (val < m.minimum)
+    m.minimum = val;
+
+  if (std::isnan(m.avg)) {
+    m.avg = val;
+    m.samples = 1;
+  } else {
+    m.avg = (m.avg * m.samples + val) / static_cast<float>(m.samples + 1);
+    m.samples++;
+  }
+  this->value_history_[hour] = m;
+  this->last_index_ = hour;
+  return val;
+}
+
 void AirQualityComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up air_quality sensor...");
 
@@ -42,17 +93,14 @@ void AirQualityComponent::setup() {
     it.second->add_on_state_callback([this, it](float val) {
       this->source_sensor_values_[it.first] = val;
       this->add_to_value_history_(it.first, val);
-      this->publish_on_data_complete_();
+      this->publish_data_();
     });
   };
 }
 
-#include <esp_heap_caps.h>
-#include <esp_system.h>
-
 // directly publishing from the callback would trigger multiple publishes
 // wait for publish_window_ ms for the other callback to update values
-void AirQualityComponent::publish_on_data_complete_() {
+void AirQualityComponent::publish_data_() {
   if (in_publish_)
     return;
   this->in_publish_ = true;
@@ -62,15 +110,13 @@ void AirQualityComponent::publish_on_data_complete_() {
     float aqi = 0.0f;
 
     ESP_LOGD(TAG, "Update from source sensors received");
-    auto freemem = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    ESP_LOGD(TAG, "Freemem =%d", freemem);
-    for (auto &it : this->value_history_) {
+    for (auto &it : this->measurements_) {
       for (int i = 0; i < 24; i++) {
         auto a = it.second[i];
         ESP_LOGD(TAG, "History %d  %d %f %f %f %d", it.first, i, a.avg, a.maximum, a.minimum, a.samples);
       }
     }
-    auto v = calc_airnow(PM10);
+    auto v = get_airnow_index(PM10);
     if (this->aqi_sensor_ != nullptr) {
       int8_t aqi_value = this->calulate_aqi_(AQI_TYPE);
       if (aqi_value != -1) {
@@ -100,9 +146,9 @@ void AirQualityComponent::dump_config() {
 
 float AirQualityComponent::get_setup_priority() const { return setup_priority::DATA; }
 
-uint8_t AirQualityComponent::calulate_aqi_(AQICalculatorType aqi_calc_type) {
+uint16_t AirQualityComponent::calulate_aqi_(AQICalculatorType aqi_calc_type) {
   AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(aqi_calc_type);
-  uint8_t aqi_value = 0;
+  uint16_t aqi_value = 0;
   for (auto const &it : this->source_sensors_) {
     auto sensor_value = this->source_sensor_values_[it.first];
     aqi_value = std::max(aqi_value, calculator->calculate_index(sensor_value, it.first));
@@ -112,53 +158,29 @@ uint8_t AirQualityComponent::calulate_aqi_(AQICalculatorType aqi_calc_type) {
 
 // Add current value to value_history and calc max,min, avg for every hour
 float AirQualityComponent::add_to_value_history_(Pollutant pollutant, float val) {
-  Measurement m;
-  auto t_now = std::time(nullptr);
-  uint8_t hour = ::localtime(&t_now)->tm_hour;
-  // if we have the series recorded get the measurement for the current hour
-  if (this->value_history_.count(pollutant)) {
-    m = this->value_history_[pollutant][hour];
+  // create new entry if history for this pullutant doesn't exist
+  if (!this->measurements_.count(pollutant)) {
+    Measurements m;
+    this->measurements_.emplace(pollutant, m);
   }
-
-  if (std::isnan(m.maximum))
-    m.maximum = val;
-  else if (val > m.maximum)
-    m.maximum = val;
-
-  if (std::isnan(m.minimum))
-    m.minimum = val;
-  else if (val < m.minimum)
-    m.minimum = val;
-
-  if (std::isnan(m.avg)) {
-    m.avg = val;
-    m.samples = 1;
-  } else {
-    m.avg = (m.avg * m.samples + val) / static_cast<float>(m.samples + 1);
-    m.samples++;
-  }
-
-  // add the array for this pollutant to value_history_
-  if (this->value_history_.count(pollutant) == 0) {
-    std::array<Measurement, 24> tmp;
-    tmp[hour] = m;
-    this->value_history_.emplace(pollutant, tmp);
-  } else {
-    this->value_history_[pollutant][hour] = m;
-  }
-  ESP_LOGD(TAG, "Added val %f to hour %d", val, hour);
+  this->measurements_[pollutant].add_to_history(val);
+  ESP_LOGD(TAG, "Added val %f", val);
   return val;
 }
 
+uint16_t AirQualityComponent::get_airnow_index(Pollutant pollutant) {
+  auto series = measurements_[pollutant];
+  auto aqi_val = calc_airnow_value(series);
+  AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(AQI_TYPE);
+  uint16_t aqi = calculator->calculate_index(aqi_val, pollutant);
+  ESP_LOGD(TAG, "Nowcast value = %f NowCast AQI = %d", aqi_val, aqi);
+  return aqi;
+}
+
 // ref: https://forum.airnowtech.org/t/the-nowcast-for-pm2-5-and-pm10/172
-uint16_t AirQualityComponent::calc_airnow(Pollutant pollutant) {
+float calc_airnow_value(Measurements &series) {
   auto t_now = std::time(nullptr);
   int current_hour = ::localtime(&t_now)->tm_hour;
-  // Already exists get the measurement for the current hour
-  if (this->value_history_.count(pollutant) == 0)
-    return 0;
-
-  auto series = this->value_history_[pollutant];
   // find min - max for the last 12 hours
   float maxvalue = 0.0f;
   float minvalue = 100000.0f;
@@ -200,12 +222,7 @@ uint16_t AirQualityComponent::calc_airnow(Pollutant pollutant) {
   }
   auto aqi_val = sum / ((1 - powf(factor, n_samples + 1)) / (1 - factor));
   ESP_LOGD(TAG, "AQIVAL sum = %f %f", sum, aqi_val);
-
-  AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(AQI_TYPE);
-  uint16_t aqi = calculator->calculate_index(aqi_val, pollutant);
-  ESP_LOGD(TAG, "sum = %f  calc = %f NowCast AQI = %d", sum, aqi_val, aqi);
-
-  return aqi;
+  return aqi_val;
 }
 
 }  // namespace airquality

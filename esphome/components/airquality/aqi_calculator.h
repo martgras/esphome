@@ -8,7 +8,7 @@ namespace airquality {
 
 class AQICalculator : public AbstractAQICalculator {
  public:
-  uint8_t calculate_index(uint16_t value, Pollutant pollutant_type) override {
+  uint16_t calculate_index(uint16_t value, Pollutant pollutant_type) override {
     int grid_index = get_grid_index_(value, pollutant_type);
     // max level eceeded
     if (grid_index == AMOUNT_OF_LEVELS)

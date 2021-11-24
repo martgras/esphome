@@ -8,7 +8,7 @@ namespace airquality {
 
 class CAQICalculator : public AbstractAQICalculator {
  public:
-  uint8_t calculate_index(uint16_t value, Pollutant pollutant_type) override {
+  uint16_t calculate_index(uint16_t value, Pollutant pollutant_type) override {
     int grid_index = get_grid_index_(value, pollutant_type);
     if (grid_index == AMOUNT_OF_LEVELS)
       return index_grid_[AMOUNT_OF_LEVELS - 1][1];
@@ -35,7 +35,7 @@ class CAQICalculator : public AbstractAQICalculator {
       {{0, 50}, {51, 100}, {101, 200}, {201, 400}, {400, 600}},
       //  O3
       {{0, 60}, {61, 120}, {121, 180}, {181, 240}, {241, 600}},
-      // CO 
+      // CO
       {{0, 5000}, {5001, 7500}, {75001, 10000}, {10001, 20000}, {20000, 30000}},
       // SO2 1h avg
       {{0, 50}, {51, 100}, {101, 350}, {350, 500}, {501, 600}}};
