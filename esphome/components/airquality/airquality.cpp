@@ -116,7 +116,7 @@ void AirQualityComponent::publish_data_() {
         ESP_LOGD(TAG, "History %d  %d %f %f %f %d", it.first, i, a.avg, a.maximum, a.minimum, a.samples);
       }
     }
-    auto v = get_airnow_index(PM10);
+    auto v = get_nowcast_index_(PM10);
     if (this->aqi_sensor_ != nullptr) {
       int8_t aqi_value = this->calulate_aqi_(AQI_TYPE);
       if (aqi_value != -1) {
@@ -168,9 +168,10 @@ float AirQualityComponent::add_to_value_history_(Pollutant pollutant, float val)
   return val;
 }
 
-uint16_t AirQualityComponent::get_airnow_index(Pollutant pollutant) {
+// Caculate NowCast value and map it to AQI Index
+uint16_t AirQualityComponent::get_nowcast_index_(Pollutant pollutant) {
   auto series = measurements_[pollutant];
-  auto aqi_val = calc_airnow_value(series);
+  auto aqi_val = calculate_nowcast(series);
   AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(AQI_TYPE);
   uint16_t aqi = calculator->calculate_index(aqi_val, pollutant);
   ESP_LOGD(TAG, "Nowcast value = %f NowCast AQI = %d", aqi_val, aqi);
@@ -178,7 +179,7 @@ uint16_t AirQualityComponent::get_airnow_index(Pollutant pollutant) {
 }
 
 // ref: https://forum.airnowtech.org/t/the-nowcast-for-pm2-5-and-pm10/172
-float calc_airnow_value(Measurements &series) {
+float calculate_nowcast(Measurements &series) {
   auto t_now = std::time(nullptr);
   int current_hour = ::localtime(&t_now)->tm_hour;
   // find min - max for the last 12 hours
@@ -196,7 +197,6 @@ float calc_airnow_value(Measurements &series) {
     }
     if (series[h].avg > maxvalue)
       maxvalue = series[h].avg;
-    // change to avg - just use min for testing
     if (series[h].avg < minvalue)
       minvalue = series[h].avg;
     n_samples++;
@@ -213,7 +213,7 @@ float calc_airnow_value(Measurements &series) {
   if (factor > 1.0f)
     factor = 1.0f;
 
-  ESP_LOGD(TAG, "n = %d r = %f f=%f", n_samples, range, factor);
+  ESP_LOGVV(TAG, "Nowcast samples = %d min max range = %f weight factor=%f", n_samples, range, factor);
   // sum up all measurements multiplied by weight_facor^hours
   for (int i = 0; i < n_samples; i++) {
     auto h = current_hour - i;
@@ -221,7 +221,7 @@ float calc_airnow_value(Measurements &series) {
     sum += powf(factor, i) * series[h].avg;
   }
   auto aqi_val = sum / ((1 - powf(factor, n_samples + 1)) / (1 - factor));
-  ESP_LOGD(TAG, "AQIVAL sum = %f %f", sum, aqi_val);
+  ESP_LOGD(TAG, "NowCast = %f", aqi_val);
   return aqi_val;
 }
 

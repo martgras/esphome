@@ -36,7 +36,10 @@ class Measurements {
   std::array<Measurement, 24> value_history_;
 };
 
-float calc_airnow_value(Measurements &series);
+// calculate nowcast value based on the measurements of the last 12h hours.
+// at least 2 hours of data are required for useful data
+// to convert the value to an AQI index get the index for the value
+float calculate_nowcast(Measurements &series);
 
 class AirQualityComponent : public Component {
  public:
@@ -59,7 +62,7 @@ class AirQualityComponent : public Component {
   // void update() override;
 
  protected:
-  uint16_t get_airnow_index(Pollutant pollutant);
+  uint16_t get_nowcast_index_(Pollutant pollutant);
   uint16_t calulate_aqi_(AQICalculatorType aqi_calc_type);
   bool in_publish_{false};
   float add_to_value_history_(Pollutant pollutant, float val);
