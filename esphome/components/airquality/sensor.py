@@ -71,7 +71,7 @@ CONFIG_SCHEMA = cv.All(
                 CONF_PUBLISH_WINDOW, default="500ms"
             ): cv.positive_time_period_milliseconds,
         }
-    ).extend(cv.COMPONENT_SCHEMA),
+    ).extend(cv.polling_component_schema("60s")),
     _validate,
 )
 

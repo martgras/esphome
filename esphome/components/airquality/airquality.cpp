@@ -10,6 +10,20 @@ namespace airquality {
 
 static const char *const TAG = "aitquality.sensor";
 
+const char *get_aqi_type(AQICalculatorType c) {
+  switch (c) {
+    case AQI_TYPE:
+      return "AQI";
+      break;
+    case CAQI_TYPE:
+      return "CAQI";
+      break;
+    default:
+      return "";
+      break;
+  }
+}
+
 const char *get_pollutant_name(Pollutant p) {
   switch (p) {
     case PM25:
@@ -30,8 +44,10 @@ const char *get_pollutant_name(Pollutant p) {
     case SO2:
       return "SO2";
       break;
+    default:
+      return "";
+      break;
   }
-  return "";
 }
 
 // average of the the averages of the last hours
@@ -93,69 +109,50 @@ void AirQualityComponent::setup() {
     it.second->add_on_state_callback([this, it](float val) {
       this->source_sensor_values_[it.first] = val;
       this->add_to_value_history_(it.first, val);
-      this->publish_data_();
     });
   };
 }
 
-// directly publishing from the callback would trigger multiple publishes
-// wait for publish_window_ ms for the other callback to update values
-void AirQualityComponent::publish_data_() {
-  if (in_publish_)
-    return;
-  this->in_publish_ = true;
-  set_timeout(publish_window_, [this]() {
-    int8_t aqi_value = 0;
-    int8_t caqi_value = 0;
-    float aqi = 0.0f;
-
-    ESP_LOGD(TAG, "Update from source sensors received");
-    for (auto &it : this->measurements_) {
-      for (int i = 0; i < 24; i++) {
-        auto a = it.second[i];
-        ESP_LOGD(TAG, "History %d  %d %f %f %f %d", it.first, i, a.avg, a.maximum, a.minimum, a.samples);
-      }
-    }
-    if (this->aqi_sensor_ != nullptr) {
-      int16_t aqi_value = this->calulate_aqi_(AQI_TYPE);
-      if (aqi_value != -1) {
-        this->aqi_sensor_->publish_state(aqi_value);
-      }
-    }
-    if (this->caqi_sensor_ != nullptr) {
-      int16_t caqi_value = this->calulate_aqi_(CAQI_TYPE);
-      if (caqi_value != -1) {
-        this->caqi_sensor_->publish_state(caqi_value);
-      }
-    }
-    if (this->nowcast_sensor_ != nullptr) {
-      uint16_t aqi_value = 0;
-      // loop pver all polutants configured
-      for (auto const &it : this->source_sensors_) {
-        auto sensor_value = this->source_sensor_values_[it.first];
-        aqi_value = std::max(aqi_value, get_nowcast_index_(it.first));
-      }
-      this->nowcast_sensor_->publish_state(aqi_value);
-    }
-    this->in_publish_ = false;
-  });
-}
 void AirQualityComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Air Quality:");
-  if (this->aqi_sensor_)
-    LOG_SENSOR("  ", "AQI", this->aqi_sensor_);
-  if (this->caqi_sensor_)
-    LOG_SENSOR("  ", "CAQI", this->caqi_sensor_);
+  // loop over the configured decision grids
+  for (auto &sens : this->aqi_sensors_) {
+    LOG_SENSOR("  ", get_aqi_type(sens.first), sens.second);
+  }
   for (auto const &it : this->source_sensors_) {
     ESP_LOGCONFIG(TAG, "  Pollutant: %s: Source Sensor %s", get_pollutant_name(it.first),
                   it.second->get_name().c_str());
   }
 }
 
+void AirQualityComponent::update() {
+  int8_t aqi_value = 0;
+  int8_t caqi_value = 0;
+  float aqi = 0.0f;
+
+  // loop over the configured decision grids
+  for (auto &sens : this->aqi_sensors_) {
+    uint16_t aqi_value = 0;
+    aqi_value = std::max(aqi_value, calculate_aqi_(sens.first));
+    sens.second->publish_state(aqi_value);
+  }
+
+  if (this->nowcast_sensor_ != nullptr) {
+    uint16_t aqi_value = 0;
+    // loop over all polutants configured
+    for (auto const &it : this->source_sensors_) {
+      auto sensor_value = this->source_sensor_values_[it.first];
+      aqi_value = std::max(aqi_value, get_nowcast_index_(it.first));
+    }
+    this->nowcast_sensor_->publish_state(aqi_value);
+  }
+}
+
 float AirQualityComponent::get_setup_priority() const { return setup_priority::DATA; }
 
-uint16_t AirQualityComponent::calulate_aqi_(AQICalculatorType aqi_calc_type) {
-  AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(aqi_calc_type);
+// loops over all configured pollutants and returns the max aqi for all of them
+uint16_t AirQualityComponent::calculate_aqi_(AQICalculatorType aqi_calc_type) {
+  AQICalculatorBase *calculator = this->calculators_[aqi_calc_type];
   uint16_t aqi_value = 0;
   for (auto const &it : this->source_sensors_) {
     auto sensor_value = this->source_sensor_values_[it.first];
@@ -176,11 +173,11 @@ float AirQualityComponent::add_to_value_history_(Pollutant pollutant, float val)
   return val;
 }
 
-// Caculate NowCast value and map it to AQI Index
+// Calculate NowCast value and map it to AQI Index
 uint16_t AirQualityComponent::get_nowcast_index_(Pollutant pollutant) {
   auto series = measurements_[pollutant];
   auto aqi_val = calculate_nowcast(series);
-  AbstractAQICalculator *calculator = this->aqi_calculator_factory_.get_calculator(AQI_TYPE);
+  AQICalculatorBase *calculator = this->calculators_[AQI_TYPE];
   uint16_t aqi = calculator->calculate_index(aqi_val, pollutant);
   ESP_LOGD(TAG, "Nowcast value = %f NowCast AQI = %d", aqi_val, aqi);
   return aqi;
@@ -232,6 +229,11 @@ float calculate_nowcast(Measurements &series) {
   ESP_LOGD(TAG, "NowCast = %f", aqi_val);
   return aqi_val;
 }
+
+const constexpr int AQICalc::index_grid_[AQICalc::get_num_levels()][2];
+const constexpr int AQICalc::calculation_grids_[(Pollutant::SO2 + 1)][AQICalc::get_num_levels()][2];
+const constexpr int CAQICalc::index_grid_[CAQICalc::get_num_levels()][2];
+const constexpr int CAQICalc::calculation_grids_[(Pollutant::SO2 + 1)][CAQICalc::get_num_levels()][2];
 
 }  // namespace airquality
 }  // namespace esphome

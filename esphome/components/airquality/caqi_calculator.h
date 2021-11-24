@@ -1,32 +1,21 @@
 #pragma once
-
-#include "esphome/core/log.h"
-#include "abstract_aqi_calculator.h"
+#include "aqi_calculatorbase.h"
 
 namespace esphome {
 namespace airquality {
 
-class CAQICalculator : public AbstractAQICalculator {
+class CAQICalc : public CalcGrid<5> {
  public:
   uint16_t calculate_index(uint16_t value, Pollutant pollutant_type) override {
-    int grid_index = get_grid_index_(value, pollutant_type);
-    if (grid_index == AMOUNT_OF_LEVELS)
-      return index_grid_[AMOUNT_OF_LEVELS - 1][1];
-    int aqi_lo = index_grid_[grid_index][0];
-    int aqi_hi = index_grid_[grid_index][1];
-    int conc_lo = calculation_grids_[pollutant_type][grid_index][0];
-    int conc_hi = calculation_grids_[pollutant_type][grid_index][1];
-    return (value - conc_lo) * (aqi_hi - aqi_lo) / (conc_hi - conc_lo) + aqi_lo;
+    return calculate_index_(value, pollutant_type, index_grid_, calculation_grids_);
   }
 
  protected:
-  static const int AMOUNT_OF_LEVELS = 5;
-
-  int index_grid_[AMOUNT_OF_LEVELS][2] = {{0, 25}, {26, 50}, {51, 75}, {76, 100}, {101, 600}};
+  static const constexpr int index_grid_[get_num_levels()][2] = {{0, 25}, {26, 50}, {51, 75}, {76, 100}, {101, 600}};
 
   // Note must be defined using the order of enum Pollutant
   // Based on revisised CAQI  - City Background hourly
-  const int calculation_grids_[(Pollutant::SO2 + 1)][AMOUNT_OF_LEVELS][2] = {
+  static const constexpr int calculation_grids_[(Pollutant::SO2 + 1)][get_num_levels()][2] = {
       // PM25
       {{0, 15}, {16, 30}, {31, 55}, {56, 110}, {111, 600}},
       // PM 10
@@ -39,16 +28,6 @@ class CAQICalculator : public AbstractAQICalculator {
       {{0, 5000}, {5001, 7500}, {75001, 10000}, {10001, 20000}, {20000, 30000}},
       // SO2 1h avg
       {{0, 50}, {51, 100}, {101, 350}, {350, 500}, {501, 600}}};
-
-  int get_grid_index_(uint16_t value, Pollutant pollutant_type) {
-    for (int i = 0; i < AMOUNT_OF_LEVELS; i++) {
-      if (value >= calculation_grids_[pollutant_type][i][0] && value <= calculation_grids_[pollutant_type][i][1]) {
-        return i;
-      }
-    }
-    return AMOUNT_OF_LEVELS;
-  }
 };
-
 }  // namespace airquality
 }  // namespace esphome
