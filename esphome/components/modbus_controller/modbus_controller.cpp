@@ -26,8 +26,10 @@ bool ModbusController::send_next_command_() {
 
     // remove from queue if command was sent too often
     if (command->send_countdown < 1) {
-      ESP_LOGD(TAG, "Modbus command to device=%d register=0x%02X countdown=%d removed from queue", this->address_,
-               command->register_address, command->send_countdown);
+      ESP_LOGD(
+          TAG,
+          "Modbus command to device=%d register=0x%02X countdown=%d no response received - removed from send queue",
+          this->address_, command->register_address, command->send_countdown);
       command_queue_.pop_front();
     } else {
       ESP_LOGV(TAG, "Sending next modbus command to device %d register 0x%02X count %d", this->address_,
@@ -52,7 +54,9 @@ void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
     this->incoming_queue_.push(std::move(current_command));
     ESP_LOGV(TAG, "Modbus response queued");
     command_queue_.pop_front();
-  }
+  } else
+    ESP_LOGE(TAG, "No response handler for address 0x%X found - modbus response ignored",
+             current_command->register_address);
 }
 
 // Dispatch the response to the registered handler
