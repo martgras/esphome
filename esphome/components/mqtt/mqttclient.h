@@ -9,7 +9,11 @@
 #include "esphome/core/log.h"
 #include "esphome/components/json/json_util.h"
 #include "esphome/components/network/ip_address.h"
-#include <AsyncMqttClient.h>
+#ifdef USE_ESP_IDF
+#include "mqtt_client_idf.h"
+#else
+#include "mqtt_client_arduino.h"
+#endif
 #include "lwip/ip_addr.h"
 
 namespace esphome {
@@ -131,7 +135,10 @@ class MQTTClientComponent : public Component {
    */
   void add_ssl_fingerprint(const std::array<uint8_t, SHA1_SIZE> &fingerprint);
 #endif
-
+#ifdef USE_ESP_IDF
+  void set_ca_certificate(const char *cert) { this->mqtt_client_.set_ca_certificate(cert); }
+  void set_skip_cert_cn_check(bool skip_check) { this->mqtt_client_.set_skip_cert_cn_check(skip_check); }
+#endif
   const Availability &get_availability();
 
   /** Set the topic prefix that will be prepended to all topics together with "/". This will, in most cases,
@@ -269,6 +276,7 @@ class MQTTClientComponent : public Component {
       .prefix = "homeassistant",
       .retain = true,
       .clean = false,
+      .unique_id_generator = MQTT_LEGACY_UNIQUE_ID_GENERATOR,
   };
   std::string topic_prefix_{};
   MQTTMessage log_message_;
@@ -276,7 +284,12 @@ class MQTTClientComponent : public Component {
   int log_level_{ESPHOME_LOG_LEVEL};
 
   std::vector<MQTTSubscription> subscriptions_;
-  AsyncMqttClient mqtt_client_;
+#ifdef USE_ESP_IDF
+  MqttIdfClient mqtt_client_;
+#else
+  MQTTArduinoClient mqtt_client_;
+#endif
+
   MQTTClientState state_{MQTT_CLIENT_DISCONNECTED};
   network::IPAddress ip_;
   bool dns_resolved_{false};
@@ -285,7 +298,7 @@ class MQTTClientComponent : public Component {
   uint32_t reboot_timeout_{300000};
   uint32_t connect_begin_;
   uint32_t last_connected_{0};
-  optional<AsyncMqttClientDisconnectReason> disconnect_reason_{};
+  optional<MqttClientDisconnectReason> disconnect_reason_{};
 };
 
 extern MQTTClientComponent *global_mqtt_client;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
