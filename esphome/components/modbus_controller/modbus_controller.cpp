@@ -55,7 +55,7 @@ void ModbusController::on_modbus_data(const std::vector<uint8_t> &data) {
     ESP_LOGV(TAG, "Modbus response queued");
     command_queue_.pop_front();
   } else
-    ESP_LOGE(TAG, "No response handler for address 0x%X found - modbus response ignored",
+    ESP_LOGV(TAG, "No response handler for address 0x%X found - modbus response ignored",
              current_command->register_address);
 }
 
