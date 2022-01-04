@@ -52,6 +52,9 @@ uint16_t crc16(const uint8_t *data, uint8_t len) {
 }
 
 bool Modbus::parse_modbus_byte_(uint8_t byte) {
+  if (waiting_for_response == 0) {
+    ESP_LOGW(TAG, "Modbus received unexpected Byte %d (0X%x) discarding it", byte, byte);
+  }
   size_t at = this->rx_buffer_.size();
   this->rx_buffer_.push_back(byte);
   const uint8_t *raw = &this->rx_buffer_[0];
