@@ -276,8 +276,10 @@ uint8_t SGP4xComponent::generate_crc_(const uint8_t *data, uint8_t datalen) {
 }
 
 void SGP4xComponent::update_gas_indices() {
-  this->seconds_since_last_store_ += 1;
+  if (!this->self_test_complete_)
+    return;
 
+  this->seconds_since_last_store_ += 1;
   if (!this->measure_gas_indices_(this->voc_index_, this->nox_index_)) {
     // Set values to UINT16_MAX to indicate failure
     this->voc_index_ = this->nox_index_ = UINT16_MAX;
