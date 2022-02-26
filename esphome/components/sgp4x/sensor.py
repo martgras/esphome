@@ -93,4 +93,5 @@ async def to_code(config):
         sens = await sensor.new_sensor(config[CONF_NOX])
         cg.add(var.set_nox_sensor(sens))
 
-    cg.add_library("sensirion/Sensirion Gas Index Algorithm", "^3.1.0")
+    #    cg.add_library("sensirion/Sensirion Gas Index Algorithm", "^3.1.0")
+    cg.add_library("https://github.com/martgras/arduino-gas-index-algorithm.git", "")
