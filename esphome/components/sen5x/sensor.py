@@ -12,7 +12,6 @@ from esphome.const import (
     CONF_PM_10_0,
     CONF_PM_2_5,
     CONF_PM_4_0,
-    CONF_STORE_BASELINE,
     CONF_TEMPERATURE,
     DEVICE_CLASS_HUMIDITY,
     DEVICE_CLASS_NITROUS_OXIDE,
@@ -50,6 +49,7 @@ CONF_LEARNING_TIME_OFFSET_HOURS = "learning_time_offset_hours"
 CONF_NORMALIZED_OFFSET_SLOPE = "normalized_offset_slope"
 CONF_NOX = "nox"
 CONF_STD_INITIAL = "std_initial"
+CONF_STORE_BASELINE = "store_baseline"
 CONF_TEMPERATURE_COMPENSATION = "temperature_compensation"
 CONF_TIME_CONSTANT = "time_constant"
 CONF_VOC = "voc"
