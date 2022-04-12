@@ -24,7 +24,7 @@ bool SensirionI2CDevice::read_data(uint16_t *data, uint8_t len) {
     uint8_t crc = sht_crc_(buf[j], buf[j + 1]);
     if (crc != buf[j + 2]) {
       ESP_LOGE(TAG, "CRC8 Checksum invalid at pos %d! 0x%02X != 0x%02X", i, buf[j + 2], crc);
-      last_error_ = i2c::ERROR_CRC;
+      last_error_ = i2c::ERROR_UNKNOWN;  // TODO use i2c::ERROR_CRC;
       return false;
     }
     data[i] = encode_uint16(buf[j], buf[j + 1]);
